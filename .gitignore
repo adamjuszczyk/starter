@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+.vercel
+
+# the prototype's generated output (bash prototype/check/run.sh)
+prototype/check/shots
+prototype/check/page.html
+prototype/starter-prototype.html

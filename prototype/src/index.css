@@ -1,0 +1,8 @@
+@import "./styles/global.css";
+@import "./styles/tokens.css";
+
+/* Lifted from Overload's prototype/src/index.css (lesson L6): the page host's
+   own base styles are unlayered and beat the app's @layer base, so the base
+   background, text colour and font are restated here, unlayered. */
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--base); color: var(--text-primary); font-family: var(--font-sans); font-size: var(--fs-base); }
