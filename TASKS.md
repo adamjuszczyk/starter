@@ -209,9 +209,12 @@ Technical and architecture decisions, each with its one-line reason. The reviewe
 27. **Where Docker cannot pull the image (Fact 2), the replay-based checks are proven by the PR's `migration-replay`
     run**, and the reviewer reads that run the way `reviewer-data.md` reads the Supabase Preview runs; the builder
     says so in its report instead of skipping.
-28. **The RULES.md sort (Fact 5, appendix):** general process rules fold into the standing sections they belong to;
-    general code rules go to the `stack` skill; Overload-only rules are dropped; offline-queue rules are kept aside in
-    `NEXT.md` under "Offline writing add-on". Each carries its source line.
+28. **The RULES.md sort (Fact 5, appendix): 413 lines over every entry from Overload's line 161 on.** The 156
+    GENERAL-PROCESS lines fold into the standing sections they belong to (chunk 9, by the appendix's "Proposed folds");
+    the 150 GENERAL-CODE lines go to the `stack` skill (chunk 7, by its "Proposed stack-skill outline"); the 34
+    OFFLINE-ADDON lines are kept aside in `NEXT.md` under "Offline writing add-on"; the 15 STAGING-RELEASE lines are
+    named in `NEXT.md` under "Client-ready build" for that build to lift; the 58 OVERLOAD-ONLY lines are dropped. Each
+    carries its source line; the appendix's 20 "Doubtful" entries are the reviewers' checklist for chunks 7 and 9.
 29. **Agent definitions read the base branch, the default branch and whether the app has staging from `CONTEXT.md`
     "Repo facts"** (three named lines), never from the definition; until chunk 9, Overload's definitions are used with
     the coordinator's brief overriding `staging`/`master` with `main` and naming no staging check.
@@ -304,6 +307,10 @@ every PR) is not affected; Overload's has run there for weeks.
   address. Risk: the token can only pull public images. Also: the "Default" environment is shared by all your repos, so
   the starter gets its own personal environment at setup (the setup step creates it; nothing else changes).
 - Option C: run the replay on your PC only (Docker Desktop), as Overload's release sheet does. Not enough for agents.
+- Free fallback the agents use first either way: Overload's own rule (RULES.md line 359) pulls the image through
+  Google's public mirror `mirror.gcr.io` and tags it; checked here at 15:25: the mirror is reachable through this
+  session's proxy (PostgREST's manifest found, an alpine image pulled), but it did not hold the Supabase image's tag
+  at that moment (a mirror serves what it has cached), so it is a try, not a guarantee.
 What you'd regret if wrong: with A, a verify-rls that was never broken against the real image by a reviewer; with B,
 five minutes making an account and a token.
 
@@ -1070,7 +1077,7 @@ test that keeps the definitions general. (RULES.md's standing sections and the r
   trailing "(Overload RULES.md Lnnn)"; "Rules discovered during builds" and "Checks that lied" stay empty.
 - `NEXT.md`: after "Planned, not built", "Offline writing add-on: rules kept aside" (the OFFLINE-ADDON lines of the
   appendix) and "Client-ready build" (S23's crash screen, the staging and release sections of Overload's RULES.md
-  named as the sections to lift then).
+  and the appendix's STAGING-RELEASE lines named as what that build lifts).
 - `CONTEXT.md`: checked against the agent definitions' "Repo facts" labels and its size (no edit unless a label is
   missing). `scripts/check-agents.test.mjs` (new: no agent definition names `1.2.1`, `master`, an Overload-only
   script, or a staging step outside a `Staging: yes` condition; each reads its branches from CONTEXT.md's labels,
@@ -1193,6 +1200,10 @@ estimate.
      creation; after `revoke all … from anon` the signed-out probe on an `own` table answered 42501 (401 for `anon`,
      403 for `authenticated`, same code). Decided 13, 39, 40 and chunk 3 carry all of this; the Auth service's
      definitions may move with its versions, which the client-ready build's staging check will see on the real thing.
+   - Overload had found the same (the appendix, lines 318 and 320 of its RULES.md: the replay image's `auth.uid()`
+     reads only the legacy claim, and the recipe without GoTrue is the hosted `auth.uid()`, a row in `auth.users`, a
+     password for `authenticator`, an HS256 token signed with `PGRST_JWT_SECRET`); the sort surfaced it after the run
+     here, so the two agree independently.
 2. **Docker in a cloud Claude Code session.** *Run here.* `dockerd` is installed but not running; it starts with
    `dockerd --iptables=false --ip6tables=false &` (the two flags are needed: without them it dies deleting nftables
    rules it cannot own; the bridge network then comes up, containers reach each other and the host reaches them) and
@@ -1203,9 +1214,12 @@ estimate.
    Overload's agents did run the replay); `public.ecr.aws` resolves the manifest but its blob host
    (`d2glxqk2uabbnd.cloudfront.net`) and `ghcr.io`'s (`pkg-containers.githubusercontent.com`) are refused by this
    environment's network policy (`connect_rejected`, 403). The replay itself: the database answers `auth.uid()` 8 s
-   after `docker run`. **So:** the replay family runs in GitHub Actions on every PR regardless; in a cloud session it
-   runs whenever the shared hour's quota has room, and always with a Docker Hub token (Q1). The builder and reviewer
-   definitions say so (chunk 9; Decided 27).
+   after `docker run`. Overload's RULES.md line 359 (the appendix) pulls the image through `mirror.gcr.io` when
+   Docker Hub answers 429; checked here at 15:25: the mirror is reachable through the proxy and served PostgREST's
+   manifest and an alpine image, but did not hold `supabase/postgres:17.6.1.155` at that moment. **So:** the replay
+   family runs in GitHub Actions on every PR regardless; in a cloud session it runs whenever the mirror holds the tag
+   or the shared hour's quota has room, and always with a Docker Hub token (Q1). The builder and reviewer definitions
+   say so (chunk 9; Decided 27).
 3. **Where sign-ups are switched off on a hosted project.** *Checked against the docs source* (`supabase.com` is
    outside this session's network; read from `raw.githubusercontent.com/supabase/supabase/master/apps/docs/content/
    guides/deployment/branching/github-integration.mdx` and `…/configuration.mdx`): on a production deploy "new
@@ -1222,10 +1236,13 @@ estimate.
    banner. "No half-updated page" rests on having no lazy chunks: the starter has none but workbox-window, loaded at
    start, and `check-build.mjs` keeps it so. **The behaviour across two builds is run once in chunk 1** (its Fact 4
    run) and recorded.
-5. **Which RULES.md rules and "Checks that lied" are general.** *Done here:* the appendix at the end sorts every entry
-   of Overload's RULES.md from line 161 on into GENERAL-PROCESS, GENERAL-CODE, OFFLINE-ADDON, STAGING-RELEASE and
-   OVERLOAD-ONLY, each with its source line; chunk 7 (the stack skill) and chunk 9 (RULES.md's folds, NEXT.md's
-   add-on list) apply it; its "Doubtful" list is the reviewer's checklist.
+5. **Which RULES.md rules and "Checks that lied" are general.** *Done here, by a separate agent reading Overload's
+   RULES.md whole from line 161 (every section; 377 entries, 413 sort lines):* GENERAL-PROCESS 156, GENERAL-CODE 150,
+   OVERLOAD-ONLY 58, OFFLINE-ADDON 34, STAGING-RELEASE 15, each with its source line, a proposed stack-skill outline
+   over every GENERAL-CODE line, proposed folds into the standing sections for every GENERAL-PROCESS line, and 20
+   doubtful entries with the two classes weighed. The appendix at the end holds it; chunk 7 (the stack skill) and
+   chunk 9 (RULES.md's folds, NEXT.md's lists) apply it; the "Doubtful" list is their reviewers' checklist. (The
+   agent's caveat: many restatements run past twenty words to keep their key terms.)
 6. **Bundled fonts.** *Checked here:* Archivo is "Copyright 2020 The Archivo Project Authors", SIL Open Font License
    1.1 (`google/fonts`, `ofl/archivo/OFL.txt`); JetBrains Mono is "Copyright 2020 The JetBrains Mono Project
    Authors", SIL OFL 1.1 (`JetBrains/JetBrainsMono`, `OFL.txt`); both allow bundling and redistribution with software
@@ -1269,3 +1286,541 @@ estimate.
   full speed always.
 - **The Overload clone.** Read-only, at `../overload-v2`, `git checkout 8e00877`; never pushed to; every lift names
   its file in the chunk's commit message.
+
+---
+
+## Appendix — the sort of Overload's RULES.md (Fact 5)
+
+Written by a separate agent in the planning session (2026-11-06) from `../overload-v2/RULES.md` at commit `8e00877`, lines 161 to the end: every entry of "Checks that lied", the three groups of "Rules discovered during this build", and the later usage, break-proof, turn-count and tests-owed sections. Line numbers are that file's. Chunk 7 takes the GENERAL-CODE lines (the outline below); chunk 9 applies the GENERAL-PROCESS folds and puts the OFFLINE-ADDON and STAGING-RELEASE lines into NEXT.md; OVERLOAD-ONLY lines are dropped. The "Doubtful" entries are the two chunks' reviewers' checklist.
+
+### The sort: Overload's RULES.md (lines 161–658) for the starter
+
+Source: `/home/user/overload-v2/RULES.md` at the lines given; serves `/home/user/starter/SPEC.md` items 5 (stack skill), 7 (RULES.md) and Facts to verify 5.
+Line format: `L<line> | CLASS | rule (≤20 words) | why`. A bullet holding several rules has several lines with the same L-number; explanatory sub-bullets are folded into their parent, sub-bullets that are rules of their own (e.g. L253, L313, L318–L320, L440–L443, L465, L533–L536) got their own line. Every top-level entry of the five sections has at least one line (377 entries, 413 lines).
+
+### Counts
+
+| Class | Lines |
+|---|---|
+| GENERAL-PROCESS | 156 |
+| GENERAL-CODE | 150 |
+| OVERLOAD-ONLY | 58 |
+| OFFLINE-ADDON | 34 |
+| STAGING-RELEASE | 15 |
+| **Total** | **413** |
+
+### Checks that lied
+
+L163 | GENERAL-PROCESS | A passing suite doesn't prove a refactor; re-run against real data and frozen snapshots. | Verification principle; Coach is only the example.
+L164 | GENERAL-CODE | Postgres `jsonb` doesn't keep key order: deep-compare with recursively sorted keys. | Postgres fact for any app on the stack.
+L165 | OVERLOAD-ONLY | SQL Editor apply dropped characters: hash and length-check applied text. | SQL Editor hand-apply; starter deploys by GitHub link.
+L166 | OVERLOAD-ONLY | SQL Editor page text lags; Monaco `getValue()` is ground truth. | SQL Editor tooling, dropped.
+L167 | GENERAL-PROCESS | A browser tool's click can report success without firing: verify the resulting state, never the click. | Live-check rule for any app.
+L168 | GENERAL-CODE | A tab on a stale service worker reproduces old bugs: after a deploy update the registration and reload before testing. | PWA/service-worker fact; RELOAD banner is Overload's gate.
+L169 | GENERAL-PROCESS | "Server-only code never reaches the client bundle" is verified by construction or a real call, not assumed. | Verification principle; `api/` itself is dropped.
+L170 | GENERAL-CODE | A push isn't a deploy: `ignoreCommand` can skip a docs-only commit; confirm with `vercel ls`, `vercel inspect` (Ready, production) and a grep of the deployed bundle. | Vercel + lifted `vercel.json` behaviour.
+L171 | GENERAL-CODE | Vite/Vitest tolerate extensionless relative imports, Vercel's Node ESM doesn't (`ERR_MODULE_NOT_FOUND`); an env var with an invisible character gives 401; only a real deploy and call finds these. | Vite/Vercel fact, wherever an app adds `api/`.
+L172 | OVERLOAD-ONLY | A Coach Q&A first-turn bug only a real call against the deployed endpoint found. | Coach endpoint; lesson already in L171.
+L173 | GENERAL-PROCESS | Tests can pass under a broken implementation (decorative asserts): prove a test by injecting the break it claims to catch. | The break-proof rule itself.
+L174 | GENERAL-CODE | Sibling data-modifying CTEs see one snapshot: an `UPDATE` beside an insert matches zero rows and reports success. | Postgres fact for migrations and fixtures.
+L174 | GENERAL-CODE | An RLS-blocked `UPDATE`/`DELETE` returns zero rows and no error; that silence is the proof of RLS, not a failure. | RLS/PostgREST fact.
+L175 | OVERLOAD-ONLY | The SQL Editor's "creates a table without RLS" dialog on CTE fixtures is a false positive. | SQL Editor tooling, dropped.
+L176 | GENERAL-PROCESS | An unscoped query returned another account's rows and a wrong figure: scope every investigation query to one account and recompute. | Escalation 2 / standing SQL rule; any app.
+L177 | GENERAL-PROCESS | Never judge a rule harmless from one consumer: audit every consumer before calling a change safe. | Reasoning rule for any review.
+L178 | GENERAL-PROCESS | A DDL read is no baseline: "purely additive" is exactly the claim that needs a live before/after count. | Migration verification principle (DATA).
+L179 | GENERAL-PROCESS | Parse a tool's or model's output in the process that received it, never retyped. | Handling rule; Coach was the example.
+L180 | GENERAL-CODE | A local `dist` hash differs from the deployed one because Vercel inlines its own `VITE_*` values; a mismatch isn't a stale deploy. | Vercel build fact.
+L181 | GENERAL-PROCESS | A desktop-width screenshot that looks fine can wrap raggedly at phone width: check the real page at phone width too. | Verification policy: both widths (SPEC item 3).
+L182 | GENERAL-CODE | Editing source during a live browser test triggers a Vite full reload that wipes page state and looks like an app bug. | Vite HMR fact.
+L183 | GENERAL-PROCESS | Hand-typed fixture dates lie (a "Friday" on a Saturday): derive dates from the weekday, assert it, print the queue not only the verdict. | Fixture rule already in Verification by chunk type.
+L184 | GENERAL-PROCESS | An injected failure that never fired reads as a pass: confirm the injected error's text appears before reading "nothing persisted" as proof. | Break-proof control rule.
+L184 | GENERAL-CODE | A `NOT VALID` constraint applies to new rows only, so it can't inject a failure on existing ones. | Postgres fact for migrations.
+L185 | GENERAL-PROCESS | A preservation check on default values proves nothing: set non-default values first, then prove they survive. | Proof-design rule for any write path.
+L186 | GENERAL-PROCESS | One check-run id can hang `in_progress` while a later run passed: read all runs of a check by name on the commit and confirm a deploy by its effect. | PR/CI mechanics for any repo; the probe script is dropped.
+L187 | GENERAL-CODE | A second FK between two tables makes a PostgREST embed ambiguous (`PGRST201`); SQL checks can't see it, `check-embeds-local.sh` can. | PostgREST fact; the embeds check is lifted.
+L188 | GENERAL-PROCESS | A check scoped to one account rules out only that account's data: say so, and never call a spec gap void on it. | Reasoning rule; Adam's second account is the example.
+L189 | GENERAL-PROCESS | A PR's checks count only when its own `pull_request` run passes on the merged tree; a `workflow_dispatch` run on a stacked branch doesn't. | Merge mechanics for any repo.
+L190 | GENERAL-PROCESS | "Compared by hand" hides bugs: a parity claim needs an executed comparison. | Verification principle.
+L191 | GENERAL-PROCESS | Read a builder's "deliberate scope decisions" as possible regressions; a new grouping or layout keeps every per-item action the item had. | Reviewer rule for any app.
+L192 | GENERAL-PROCESS | A compatibility rule proven only in a pure module isn't proven: test it at the layer (hook, screen) that applies it. | Verification-layer rule; D30 is the example.
+L193 | GENERAL-CODE | PostgREST's row cap (`max_rows` 1000) silently truncates an unbounded read: every list read pages (ordered, `.range()` until a short page) or is bounded. | PostgREST fact for any data read.
+L195 | GENERAL-PROCESS | A test written to a rule's wording can assert the bug: for "only X" test what must be absent, on a fixture where something is already past. | Test-design rule; the week sheet is the example.
+L196 | GENERAL-CODE | `migration-replay` green but production refused a function: the replay doesn't load pg-safeupdate, so bare deletes fail only live. | Supabase/pg-safeupdate fact; replay check is lifted.
+L197 | GENERAL-CODE | An anon-key read of RLS-hidden rows answers `[]` whether they exist or not; if unreachable and empty look the same the read proves nothing; only a signed-in read can. | RLS fact that shapes every probe.
+L198 | GENERAL-CODE | `document.scrollWidth` passes while an `overflow: hidden` card clips a row: check every element against its nearest clipping ancestor. | Clipping-check design; the starter's `clipping.mjs` does this.
+L199 | GENERAL-PROCESS | A long-text control is lengthened as the screen prints it (capitals, transforms), beside a no-wrap copy that must fail. | Control-design rule; the sheet script is dropped.
+L200 | GENERAL-PROCESS | A break or mutant run in a scratch copy starts with an unmutated control run there; a catch is read by the failing test's name, not "failed > 0". | Break-runner rule for any repo.
+L201 | OFFLINE-ADDON | A probe of a queue defect models every foreign key the queued writes carry and every online delete of a record they name. | Sync-queue verification.
+L202 | GENERAL-CODE | A fake server must refuse in the real shape: PostgREST under RLS reports an FK violation as `Key is not present in table "x".` with no key, so match the constraint name in `message`; read the shape once on a real server. | PostgREST error-shape fact.
+### Rules discovered — Data and architecture
+
+L209 | OVERLOAD-ONLY | Standing UI rule: show only what every set uses; the rest behind a ⋯ menu; an unset feature shows nothing. | Adam's rule for Overload's set rows; prototype decides starter layout.
+L210 | GENERAL-CODE | TanStack Query owns all Supabase data; Zustand owns UI state only; never mix. | Stack architecture rule.
+L211 | GENERAL-CODE | All colours through CSS custom properties (tokens); no hardcoded hex in components. | Tokens rule; the tokens check enforces it.
+L212 | GENERAL-CODE | Text or an icon on the accent uses `var(--on-accent)`, never the base colour; a tint made from the accent isn't the accent. | Token rule for any accent-coloured surface.
+L212 | OVERLOAD-ONLY | `textOnAccent.static.test.ts` lists (`REBUILT_SCREENS`, `NOT_REBUILT`, `NOTHING_TO_READ`); Coach keeps `--base`. | 1.2 rebuild scoping.
+L213 | OVERLOAD-ONLY | A chunk that changes which files a rebuilt screen loads edits `textOnAccent.static.test.ts`'s lists. | 1.2 rebuild scoping.
+L214 | GENERAL-CODE | `today` is never computed at module load: state refreshed on `visibilitychange` and at midnight. | Date handling for any app showing "today".
+L215 | OVERLOAD-ONLY | Set logs: `weight` and `reps` nullable when `is_skipped`. | Overload schema.
+L216 | GENERAL-CODE | Weeks are Monday-anchored: pass `weekStartsOn: 1` explicitly; never `differenceInWeeks` for calendar weeks. | Polish-calendar date rule; meso numbering is the example.
+L216 | GENERAL-PROCESS | A fixture whose verdict turns on a week boundary derives it from its dates, prints it and pins the Sunday/Monday edge. | Fixture-date rule, as L183.
+L217 | OVERLOAD-ONLY | Stage-exclusion: drop stages never count as sets except for volume; use `setGroupLogic.ts`. | Overload domain.
+L218 | OVERLOAD-ONLY | Dropset write paths pass the parent id from the tap; no inference. | Overload domain.
+L219 | OVERLOAD-ONLY | Deleting a dropset head deletes stages first, head last; ADD STAGE disabled mid-delete. | Overload domain.
+L219 | GENERAL-CODE | An awaited mutation that must fail fast offline uses `networkMode: 'always'`; TanStack's default `'online'` pauses it and the await hangs. | TanStack fact; starter's "saving needs a connection".
+L220 | OVERLOAD-ONLY | e1RM: RIR-adjusted Epley; null RIR skipped; headline a percentage. | Overload domain.
+L221 | OVERLOAD-ONLY | Weights stored in kg; unchanged display value returns the stored kg; unit written as a literal. | Overload domain.
+L222 | OVERLOAD-ONLY | Compare logged and planned weights in the exercise's display unit. | Overload domain.
+L223 | OVERLOAD-ONLY | REVIEW reads a head log's `stage_kind` as the type as done. | Overload domain.
+L224 | OVERLOAD-ONLY | REVIEW sees a type change on an undone set only through its `retyped` row. | Overload domain.
+L225 | OVERLOAD-ONLY | `EARLIER THIS WEEK` is the shipped label, not a bug. | Overload wording.
+L226 | OVERLOAD-ONLY | Plan's SETS / STRUCTURE choice is page-local. | Overload screen.
+L227 | OVERLOAD-ONLY | Coach and `api/**` rules live in HISTORY.md; read before any Coach change. | Coach/api dropped.
+L228 | GENERAL-CODE | A new table's RLS matches its access kind (`own`: `for all using/with check (user_id = auth.uid())`); any deviation is deliberate and documented in the migration. | RLS rule; access kinds generalize it.
+L229 | GENERAL-PROCESS | A bare `select` through any RLS-bypassing path carries an explicit single-user filter, investigation queries included. | Standing SQL rule / Escalation 2.
+L230 | OVERLOAD-ONLY | One read path for program exercises; `check-program-exercise-reads.mjs` enforces it. | Dropped script; Overload domain.
+L231 | OVERLOAD-ONLY | Carry fields are unread; don't add a reader. | Overload schema.
+L232 | GENERAL-CODE | Removing a read in front of a write can turn a stale-screen error into a silent orphan write: keep and test whatever failure the read gave. | Write-path design rule for any app.
+L233 | OVERLOAD-ONLY | Deload restore keeps pre-deload sets; writes that change exercises leave the copy stale. | Overload domain.
+L234 | OVERLOAD-ONLY | CHANGE THE PROGRAM rewrites a not-started deload session's saved copy. | Overload domain.
+L235 | OVERLOAD-ONLY | A program swap inserts a new row and soft-removes the old; `replaces_program_exercise_id` records it. | Overload domain.
+L236 | OVERLOAD-ONLY | A week-dependent run changed in 1.1 has its list in its weeks, not its run copy. | Overload domain.
+L237 | GENERAL-CODE | A migration that drops a column ships after the code that stops using it: code first, every device updated, then the drop; check every bundle still in use for writes. | Migration ordering rule.
+L238 | GENERAL-PROCESS | Break proofs restore from a `cp` backup, never `git checkout --`, which reverts every uncommitted edit. | Break-proof mechanics, already standing.
+L238 | GENERAL-PROCESS | A break is one exact replacement that must match once; one that never fired reads as caught. | Break-proof mechanics.
+L238 | GENERAL-PROCESS | After a loop of breaks, what is on disk (build, screenshots) is the last break's: rebuild from restored code before reading it. | Break-proof mechanics.
+L239 | GENERAL-PROCESS | A reviewer may merge a migration that changes no existing row (adds, replaces a function or view, relaxes a constraint) once replay, embeds check and scratch-copy fingerprint pass; migration first, code after a green deploy; destructive ones stay Adam's. | Escalation boundary for migrations (D29).
+L240 | OVERLOAD-ONLY | Workout screen unchanged for plain sessions (D30), superseded by behaviour parity (R4). | Overload screen rule.
+L241 | OVERLOAD-ONLY | One workout on several weekdays exists; never convert such a program automatically. | Overload domain (G14).
+L242 | GENERAL-PROCESS | Check UI at phone width, not just desktop. | Verification policy: both widths.
+L243 | GENERAL-CODE | A write that must leave exactly one active record runs in one transaction (an RPC) under a per-user advisory lock; two client requests can leave two. | SQL function pattern for any app; runs are the example.
+L244 | GENERAL-CODE | Every table the app reads or writes goes in the access list (verify-rls) with its kind in the same change; the list test fails until it does; `public` cites the migration that makes it so. | RLS check rule; SPEC rule 6.
+L245 | GENERAL-CODE | A table created before any code uses it is still listed and probed (ahead list); the first `.from()` or embed moves it to the used list, the tests fail until it does. | Lifted verify-rls-ahead mechanism.
+L246 | OVERLOAD-ONLY | `pending_stages.stage_count` is the total number of drops. | Overload schema.
+L247 | OVERLOAD-ONLY | A set's number is its place (`row.number`), never a count of logged sets. | Overload domain.
+L248 | GENERAL-CODE | A named column list fails the whole read (`400`/`42703`) when a column is missing, where `select('*')` returns less; drop unread columns from the list; add a new column only once its migration is live, probed against real PostgREST with a made-up-column control. | PostgREST fact for every read.
+L249 | GENERAL-CODE | A type field added for a new column is optional when hand-built literals predate it; absent reads as null; every reader treats `undefined` as null, pinned by a test. | TypeScript/data-mapping rule for any app.
+L250 | OFFLINE-ADDON | A queued write is "never sent" only when no send started and none failed (`sendStarted` in IndexedDB); cancel only inside the single-flight pass. | Sync-queue rule.
+L251 | OFFLINE-ADDON | A queued delete's payload is `{ id }`, sent as `delete().eq('id', id)`, with session and head beside it; every item goes out through `.from(item.table)`. | Sync-queue rule.
+L252 | GENERAL-CODE | A column a full-row upsert must leave alone is left out of the payload and its type: PostgREST's upsert (`merge-duplicates`) writes only the columns the payload names. | PostgREST upsert fact.
+L253 | GENERAL-CODE | Naming an excluded column fails typecheck (TS2353) but a spread `...(cond ? { col } : {})` passes it: only payload tests catch that. | TypeScript limit; payload tests needed.
+L254 | GENERAL-PROCESS | Prove "leaves the column alone" with a value stored behind the client's back: load, change by API, write, the API's value must survive. | Proof design, as L185.
+L256 | GENERAL-CODE | A one-column change is sent as `update({ col }).eq('id', id)`, never a whole-row upsert, which re-creates a row another device deleted and overwrites its edits. | PostgREST write rule for multi-device apps.
+L256 | OFFLINE-ADDON | A one-column change goes out as a `patch` queue item `{ id, set_number }`, flushed after every earlier write to that log. | Sync-queue item shape.
+L258 | OFFLINE-ADDON | A queued row naming a log by cascading FK is refused forever (`23503`) once the queue cancels or deletes that log first; probe every new producer with the record deleted offline, online, and after one failure. | Sync-queue rule.
+L259 | OFFLINE-ADDON | A queue item naming another record by cascading FK hangs under it in the never-sent cancel, the order and the online delete. | Sync-queue rule.
+L260 | OFFLINE-ADDON | A queued write refused because its record is gone is decided by the FK action: CASCADE drops it, SET NULL sends with null, NO ACTION makes the delete consult the queue. | Sync-queue rule.
+L264 | OFFLINE-ADDON | An online delete drops the deleted record's own queued writes once its request went through, and tells a running pass (`removedByCleanup`). | Sync-queue rule.
+L268 | OFFLINE-ADDON | A preflight counting what the queue will still send leaves out only a pair the next pass cancels. | Sync-queue rule.
+L271 | OFFLINE-ADDON | Sign-out clears every table of the device database (`db.tables`); the test names the tables so a new one is named on purpose. | Dexie rule.
+L272 | OFFLINE-ADDON | A write still queued after a pass reads as missing once the screen reads the server again; probe an offline write with its first send failing while reads go through. | Sync-queue rule.
+L277 | OFFLINE-ADDON | The workout's session read is the server's rows plus this device's unsent upserts (`readActiveSession`), merging upserts only; a queue that can't be read leaves the server's answer. | Offline read-merge rule.
+L279 | OVERLOAD-ONLY | A deload set's logged base weight is the planned exercise's own. | Overload domain.
+L280 | OVERLOAD-ONLY | A read of sessions by day window also returns rows moved into it (`moved_to_date`). | Overload domain.
+L281 | GENERAL-CODE | A change sent as several requests holds its screen state consistent from before the first request until the cache holds the result, or a read between them draws a half-written state. | Multi-request write rule; `holdChanges` is the example.
+L282 | GENERAL-CODE | A change of several requests sends the one the server can refuse first and every destructive one after it, so a refusal destroys nothing; a cut-short change is finished by repeating it. | Write-ordering rule for any app.
+L283 | OFFLINE-ADDON | Device-kept state for a record (drafts) is keyed by the record's own id, never by the ordinal its row shows. | Device draft store rule.
+L284 | OFFLINE-ADDON | A hook reading IndexedDB draws first and merges what the device held when it answers; writes that depend on it wait for `hydrated`. | Dexie hydration rule.
+### Rules discovered — Database / migrations
+
+L287 | GENERAL-CODE | Production runs pg-safeupdate: `DELETE`/`UPDATE` without `WHERE` fails through the API and inside functions; use `where true`. | Supabase default for any project.
+L288 | GENERAL-PROCESS | When the `supabase/postgres` image can't be pulled, an apt PostgreSQL stand-in replays migrations for SQL-level checks only; Postgres version and pg-safeupdate stay unproven until CI's replay. | Environment limit of the replay check (Facts to verify 2).
+L289 | GENERAL-PROCESS | A migration that changes or removes existing data gets a before/after row count on every table it mentions (target, FK, join), scoped to one user; add-only ones are proven by replay plus scratch-copy fingerprint. | DATA verification / Escalation for destructive migrations.
+L290 | GENERAL-PROCESS | A fingerprint that leaves the new column out can't see a default on it: pair it with a count of the column's NULLs and a control that changes one row. | Migration-proof design.
+L291 | GENERAL-PROCESS | A before/after count of a written column can net to zero: pair it with an md5 over the written columns, per scope and outside it, with controls that move one row. | Migration-proof design.
+L293 | GENERAL-PROCESS | A text test of "reads only the user's rows" checks the filter per select block, not per file. | Static-test design.
+L294 | GENERAL-CODE | Migrations deploy through the Supabase GitHub link from the default branch; nothing is applied, transported or pasted by hand. | Migration flow; checklist step 3.
+L295 | GENERAL-CODE | Prove constraints by violating them (`23514`, `23503`, `23505`, zero rows); prove `on delete set null`/cascade by deleting a throwaway parent; prove read-only RLS through the anon-key client. | Postgres/RLS proof technique.
+L296 | GENERAL-CODE | A `CHECK` passes when its expression is NULL, so `is null or` is an equivalent mutant; a nullable column's constraint proof inserts an explicit NULL. | Postgres fact.
+L297 | GENERAL-CODE | A `CHECK` can be proven live without writing a row: Postgres tests a table's checks in name order after RLS and before FKs, so break it beside an older check whose name sorts after it. | Postgres fact.
+L298 | GENERAL-CODE | Write SQL fixtures as sequential statements in a `DO` block, never sibling data-modifying CTEs (single snapshot). | Postgres fact for fixtures and migrations.
+L299 | GENERAL-PROCESS | Throwaway live data is labelled (`TEST-…`), scoped to one account, deleted in FK-safe order, and its cleanup proven by `count(*)` against the baseline, never by the UI looking empty. | Live-check hygiene; the meso example dropped.
+L300 | GENERAL-CODE | Apply an additive migration before deploying code that writes the new columns. | Migration ordering rule.
+L301 | GENERAL-CODE | A live schema probe that reads nothing: `GET /rest/v1/<table>?select=<cols>&limit=0` with the anon key answers `200 []` or `400`/`42703`; always add a made-up-column control. | PostgREST probe technique.
+L302 | OVERLOAD-ONLY | A done number copied into the plan must fit `v2_week_plan_sets`' CHECKs. | Overload domain.
+L303 | GENERAL-CODE | An insert through `jsonb_populate_record` gets NULL, not the column's default, for every column its row leaves out: name every NOT NULL column. | Postgres fact for SQL functions.
+L303 | GENERAL-PROCESS | A test's stand-in database mirrors the tables' cascades and set-nulls too, not only their refusals. | Stand-in design (also L418, L554).
+L304 | OVERLOAD-ONLY | `probe-live-columns.mjs` takes the spec path. | Dropped script.
+L305 | GENERAL-CODE | The `supabase/postgres` image's `auth.users` is minimal until GoTrue has run once, so a seed with users can't run on a bare replay container. | Replay-with-users fact (Facts to verify 1).
+L306 | GENERAL-CODE | GoTrue is ready for a seed only when its log says "GoTrue migrations applied successfully"; `auth.identities` exists before its last columns. | Replay-with-users fact.
+L307 | GENERAL-CODE | A local stack: replay `--keep`, GoTrue (`supabase/gotrue:v2.180.0`, sign-ups off) and PostgREST (`postgrest/postgrest:v12.2.3`, `PGRST_DB_MAX_ROWS=1000`) behind a small Node gateway on a fake host. | Local-stack recipe; staging-guard part dropped.
+L308 | STAGING-RELEASE | A seed's guard pins its own account list; once a newer seed ran, only it or a later one can re-seed. | Staging seed mechanics.
+L309 | OVERLOAD-ONLY | A logged warmup may hold no weight or reps; a working set's log may not (`v2_set_logs_check`). | Overload schema.
+L310 | GENERAL-CODE | `ON CONFLICT` on a partial unique index's columns without its predicate is `42P10`; an upsert with no `onConflict` lands on the primary key. | Postgres/PostgREST fact.
+L310 | OVERLOAD-ONLY | A `v2_session_set_changes` write is the whole row on the row's existing id; partial unique indexes refuse a second row. | Overload schema.
+L311 | STAGING-RELEASE | A `Supabase Preview` run can fail at the branch config step before any migration runs; a config failure is a failed deploy; prove the migration live by its effect. | Supabase branching (staging).
+L313 | GENERAL-PROCESS | The check-runs API lists only the latest run per name: read every run with `?filter=all` and each run's `.output.summary`, not only its conclusion. | GitHub CI mechanics for any repo.
+L316 | GENERAL-CODE | A function is proven as the signed-in role in a session with pg-safeupdate loaded: connect as `supabase_admin`, `load 'safeupdate'`, canary a bare UPDATE, then `set local role authenticated`. | RLS/function proof on the replay.
+L318 | GENERAL-CODE | The replay image's `auth.uid()` reads only `request.jwt.claim.sub`; PostgREST 12 sets `request.jwt.claims`, so a local PostgREST reads every call as signed out until `auth.uid()` is the hosted definition. | Replay-with-users fact (Facts to verify 1).
+L319 | GENERAL-CODE | `SET ROLE` doesn't apply the role's own settings (`authenticated`'s `statement_timeout = 8s`): set them per transaction. | Postgres fact.
+L320 | GENERAL-CODE | Without GoTrue: use the hosted `auth.uid()` definition, insert the user into `auth.users (id)`, give `authenticator` a password, sign an HS256 JWT with `PGRST_JWT_SECRET` (role `authenticated`, `sub`), gateway `/rest/v1` to PostgREST; app TypeScript runs against it through Vite's SSR loader. | Two-users-on-the-replay recipe (Facts to verify 1).
+L321 | GENERAL-CODE | A function in `public` gets default EXECUTE grants (anon, authenticated, service_role); a `pg_temp` copy gets PUBLIC's only, so a break-proof copy needs the real grants; a new Supabase branch has no default privileges, so explicit grants decide. | Grants fact.
+L322 | OVERLOAD-ONLY | `v2_apply_ops` has no upsert; an insert names every NOT NULL column; a row that may exist is `23505`. | Overload RPC.
+L325 | GENERAL-CODE | A "scoped to the caller" test needs a control that can leak: only a security-definer copy without the `user_id = auth.uid()` predicate reaches a stranger's row. | RLS/function proof design.
+L326 | OVERLOAD-ONLY | `v2_copy_program` doesn't copy `replaces_program_exercise_id`. | Overload function.
+L328 | STAGING-RELEASE | A seed's blanket grants undo a migration's revokes: repeat the revoke in `seed.sql` and read the refusal in the smoke. | Staging seed/smoke.
+L329 | GENERAL-CODE | `now()` is constant inside one transaction: idempotence of a `now()` mark is proven across committed transactions. | Postgres fact.
+L330 | GENERAL-CODE | A BEFORE ROW trigger whose function returns NULL silently drops every write; a guard trigger is statement-level. | Postgres fact; maintenance mode is the example.
+L331 | OVERLOAD-ONLY | A catalog-driven migration reaches Northstar/Atlas tables only production has. | Adam's shared project.
+L332 | GENERAL-CODE | PostgREST 12 answers a function's `P0002` with HTTP 500 and a custom SQLSTATE with 400: the app reads `error.code`, never the status. | PostgREST fact.
+L333 | STAGING-RELEASE | A re-seed while maintenance is on is refused whole (`OL001`). | Maintenance mode.
+L334 | GENERAL-CODE | verify-rls reads a revoked anon select (`42501`) as a pass: a table anon must read needs a signed-out read that expects rows; grants are checked beside RLS. | Source of the starter's `public` kind and grants check.
+### Rules discovered — Verification and process
+
+L337 | OFFLINE-ADDON | A live check that fails a write "once" holds the failure until the read under test; reconnect can run two queue passes back to back. | Sync-queue pass behaviour.
+L338 | GENERAL-CODE | Run the full `npm run typecheck` (every tsconfig project), never one project alone; a type-only import can pull browser globals into another project. | TypeScript project setup; `api` config is Overload's.
+L339 | OFFLINE-ADDON | Queue fixtures are dated at queue time, or they sort before real-now writes in `orderBy('createdAt')`. | Sync-queue fixtures.
+L340 | GENERAL-PROCESS | A break runner counts a catch only by a failing assertion; flag timeouts; print each failing test's duration; run breaks with a timeout above the code's longest real-time cap. | Break-runner rule.
+L340 | GENERAL-CODE | Vitest 4's JSON reporter gives a timed-out test `Error: STACK_TRACE_ERROR`; a test awaiting a call under a fake-timer cap hangs instead of failing: assert the effect without awaiting it. | Vitest facts.
+L341 | GENERAL-CODE | A real service-worker update is drivable in Playwright: `127.0.0.1`, Chromium `--no-proxy-server`, `serviceWorkers: 'allow'`, every Supabase request passed through Node's fetch (bodies from `postDataBuffer()`). | PWA test recipe (Facts to verify 4).
+L342 | STAGING-RELEASE | After an update's reload the once-sheet (What's new) opens over the screen: a live tool dismisses it first. | What's new is client-ready.
+L342 | OVERLOAD-ONLY | The rest bar draws the jump arrow; "timer stopped" is read from the countdown. | Overload screen.
+L343 | GENERAL-CODE | `vitest.setup.ts` gives every test file a default `__APP_VERSION__` (a file's own stub replaces it); `version.test.ts` proves the app module itself has no default. | Lifted vitest.setup/version.ts; frozen files are Overload's.
+L344 | GENERAL-PROCESS | A chunk that removes or renames an export under `src/` searches `prototype/src`, then runs the prototype's smoke tests and build; no script looks at it. | Verification at merges (prototype kit).
+L345 | OFFLINE-ADDON | A live queue check can put items in the producers' shape straight into IndexedDB while offline and answer POSTs 503 to keep them queued. | Sync-queue live-check technique.
+L346 | GENERAL-CODE | When dropping two things, the drop that finds by link runs before the drop that removes the link. | Migration/cleanup ordering.
+L347 | GENERAL-PROCESS | `vitest run --changed <base>` is the affected-files census: it follows the import graph where grepping callers misses some. | How Usage's "affected files only" is found.
+L348 | GENERAL-PROCESS | To judge a re-captured fixture, capture it on the base tree too: the base's own drift was already stale; only the branch's extra change is the chunk's. | Fixture review rule.
+L349 | GENERAL-CODE | On a real screen equal `fr` columns are compared with a tolerance: Chromium lays out in 1/64 px. | Playwright/screenshot fact.
+L350 | STAGING-RELEASE | A soft delete leaves the row and the staging smoke counts raw rows: hard-delete throwaway rows by API before the smoke. | Staging smoke.
+L351 | GENERAL-CODE | A new RPC's name and parameter are provable live as anon: the right shape answers the function's own refusal, a made-up parameter `PGRST202`. | PostgREST probe technique.
+L352 | GENERAL-CODE | TanStack keeps a query's data when a later read fails: a state built on "no answer" is tested with a read that fails after one that answered. | TanStack fact.
+L353 | GENERAL-CODE | A Playwright route that intercepts a table waits until no read of it is in flight; a foreground event joins an in-flight read and gets the real row. | Playwright technique.
+L354 | STAGING-RELEASE | A fresh browser profile gets the once-sheet over the first signed-in screen; dismiss it before pressing anything. | What's new is client-ready.
+L355 | GENERAL-CODE | A CSS property name in a committed fixture's inline style makes Tailwind build a utility (`text-wrap`): compare the stylesheet's rules, not only its name. | Tailwind v4 scanning fact.
+L356 | STAGING-RELEASE | The test account is exempt in staging's `v2_app_status`; proving the maintenance trigger takes a non-exempt account. | Maintenance mode / staging.
+L357 | GENERAL-CODE | Theme and accent applied before the first render are proven by a first-paint test (the cache seeded before the first draw). | Theme bootstrap test; the gate is Overload's.
+L358 | GENERAL-CODE | psql notices go to stderr: a break runner reads stdout and stderr apart, or a line diff shows changes on a comment-only control. | psql fact.
+L358 | GENERAL-PROCESS | Every break runner has a comment-only control. | Break-runner rule.
+L359 | GENERAL-PROCESS | Docker Hub answers 429 for the replay image here: pull `supabase/postgres:<tag>` through `mirror.gcr.io` and `docker tag` it. | Environment fact for the replay check.
+L360 | GENERAL-PROCESS | Live browser verification against real data is a hard gate when a task calls for it; live tests write only with an explicit go-ahead. | Escalation 1 / 17.
+L361 | GENERAL-PROCESS | Commands for Adam are Windows cmd; his `>` redirect yields UTF-16, so anything reading his output accepts UTF-16. | Procedure pages for any app.
+L361 | GENERAL-PROCESS | Pin the Supabase CLI (`npx --yes supabase@<version>`); `db query --linked` needs login only; never `db dump --dry-run`, it prints the password. | Credential safety with the CLI.
+L362 | GENERAL-PROCESS | Dry-run without credentials: from the dev-server tab, dynamic `import()` the compiled modules and call them with the app's own signed-in client; throwaway scripts deleted, `git status` checked. | Escalation 3 technique.
+L363 | GENERAL-CODE | Plain `vite` dev doesn't serve `api/**`: exercise endpoints on a deployed build or by invoking the handler directly. | Vite/Vercel fact, where an app adds `api/`.
+L363 | GENERAL-PROCESS | Never grep for a deferred live check and call it verified: carry it forward by name. | Reporting rule.
+L364 | GENERAL-PROCESS | Adversarial review: independent reviewers per dimension, each finding re-verified against current source; report raw vs confirmed counts; say which findings were adversarially verified. | Reviewer rules.
+L365 | GENERAL-PROCESS | Read the current file before editing or citing it; spot-check a subagent's report at its cited lines; report expectations as expectations and outcomes faithfully. | Reviewer rules ("confirmed, not assumed").
+L366 | GENERAL-PROCESS | Don't launch a background duplicate of a check already run inline; stop or account for one in flight. | Usage.
+L367 | GENERAL-PROCESS | Commit and push only when asked; isolate a standalone commit from unrelated work (`git stash push --keep-index`, isolated typecheck); split unrelated work; byte-diff restored files. | Build-loop git mechanics; CONTEXT.md clause is the coordinator's.
+L368 | GENERAL-PROCESS | A rule discovered mid-build is written into RULES.md the same session, not left in a log. | Reviewer rules, already standing.
+L369 | GENERAL-PROCESS | A TASKS verification can pass while the build contradicts SPEC's wording: review against SPEC's text in the brief, and put SPEC's exact words in the brief. | Reviewer rules / briefs.
+L370 | OVERLOAD-ONLY | The cloud network policy allows the staging hosts and denies production's Vercel domain, `vercel.com`, `supabase.com`. | Adam's project hosts.
+L371 | GENERAL-PROCESS | A fresh container has no `node_modules`: `npm ci` before typecheck, test or build. | Environment rule.
+L372 | GENERAL-PROCESS | `pkill -f <pattern>` kills the calling shell when the pattern is in its command line; `pgrep -f` matches it too: find the pid with `ps aux | grep "[p]attern"`, wait on a marker file. | Environment rule.
+L373 | GENERAL-PROCESS | Seed and fixture rows are shaped the way the app writes them (each column's convention from the writer); check a seed on the real screen, not only by counts. | Fixture/seed rule; replay seeds need it.
+L374 | GENERAL-CODE | `config.toml` `[auth.email] enable_signup = false` turns e-mail sign-in off for everyone; sign-ups are `[auth] enable_signup`; a config test guards it. | Supabase config trap; SPEC's sign-ups check.
+L375 | STAGING-RELEASE | A new Supabase branch has no default privileges on `public`: tables answer `42501` until the seed grants them. | Supabase branching (staging).
+L376 | OFFLINE-ADDON | Anything in front of an offline-capable write is best-effort: `networkMode: 'always'` and a fallback, so the write still happens offline. | Offline write path.
+L377 | GENERAL-PROCESS | npm here rewrites the lockfile (drops `libc` fields): never commit it; splice new entries by hand, check the diff is insertions only and the integrity matches `npm view`, then `npm ci` in a fresh checkout. | Dependency workflow in this environment.
+L378 | GENERAL-CODE | Tailwind v4 builds the stylesheet from every file git doesn't ignore (tests, scripts, docs): a bare utility word anywhere adds a rule; build after the last edit and compare the stylesheet with the base's. | Tailwind v4 scanning fact.
+L378 | GENERAL-CODE | A fixture id shaped like a utility (`ps-1`, `pe-2`) builds a rule: give fixture ids a shape no utility has and never quote such an id in a tracked file. | Tailwind v4 scanning fact.
+L379 | GENERAL-CODE | A fixture id that names a grid line (`row-3`) is a utility too. | Tailwind v4 scanning fact.
+L380 | GENERAL-CODE | Every Node process here prints `[UNDICI-EHPA] Warning` on stderr (`NODE_USE_ENV_PROXY`): a test asserting a child's stderr filters it or drops the variable. | Test-environment fact.
+L381 | GENERAL-CODE | A full-page capture draws a `position: fixed` bar at the bottom of the first viewport, not the picture's end: compare its presence and order, not its height. | Screenshot fact.
+L382 | OVERLOAD-ONLY | An app sign-in seeds the 46 default exercises; "empty" means none or exactly those. | Overload domain / staging smoke.
+L383 | GENERAL-CODE | jsdom drops some inline declarations when serialising (`border` shorthand with `var()` plus a side override, a `padding` shorthand holding `env()`, `-webkit-*`): write longhands, exotic longhand after its shorthand, check the fixture carries every declaration. | jsdom fixture fact.
+L384 | GENERAL-CODE | jsdom drops a `border-color` shorthand holding `var()` when a side colour follows it: write all four sides as longhands. | jsdom fixture fact.
+L385 | GENERAL-CODE | The entry JS differs between any two builds (`__BUILD_TIME__`, `__BUILD_HASH__`): to prove a change ships nothing, compare stylesheet and vendor chunks byte for byte, the entry after normalising those, and grep the deployed bundle for markers. | Lifted Vite defines; deploy-proof technique.
+L386 | GENERAL-CODE | jsdom lays nothing out: max height, what scrolls and scroll chaining are proven in real Chromium in the app's layout; a real phone stays Adam's. | jsdom/Playwright fact.
+L387 | GENERAL-CODE | `document.scrollWidth` is blind inside a `position: fixed` layer: measure inside every dialog in Chromium with a wide control that must fail; a long-text probe needs a word with no break opportunity. | Clipping-check design for overlays.
+L388 | GENERAL-CODE | A row that scrolls sideways by design asks for it (`overflow-x: auto`, no vertical scrolling) and the clipping check lists it instead of failing it; its own box and children's text are still measured. | Clipping-check design.
+L389 | GENERAL-CODE | A type-level test (`@ts-expect-error`) fails only under `npm run typecheck`, never in Vitest: break-prove type rules under `tsc`. | TypeScript/Vitest fact.
+L390 | GENERAL-CODE | An input whose omission would silently give plausible numbers is required: no default, refused at run time, the refusal proven under `tsc`. | API-design rule for pure modules.
+L391 | GENERAL-PROCESS | A live tool's write is confirmed by a server-side count as the account, never by the tap or a missing error-text match. | Live-check rule, as L167.
+L392 | GENERAL-CODE | Something inside a `BottomSheet` that handles Escape itself calls `preventDefault()`, or the sheet (the top one) closes too. | Lifted BottomSheet contract.
+L393 | GENERAL-CODE | A sheet whose list changes length with a filter is `BottomSheet` `height="tall"` with the filter in `toolbar`: the content region is the one scroller, so what must stay in view goes in `toolbar` or `footer`. | Lifted BottomSheet contract.
+L394 | GENERAL-CODE | A double-press guard is proven with two presses in one instant (`form.requestSubmit()` twice in one `act`), and the service mock awaited before counting calls. | React/Testing Library technique.
+L395 | GENERAL-CODE | A sheet that awaits a write then calls back checks it is still mounted with a ref set true on every effect run; StrictMode reruns effects after cleanup. | React fact for lifted components.
+L396 | GENERAL-PROCESS | A `spawnSync` timeout kills only the direct child: run the binary in its own process group (`detached: true`, kill `-pid`) and check `ps` after any sweep; before blaming a full-run timeout, re-run the file alone. | Break-runner/environment rule.
+L397 | GENERAL-PROCESS | `setsid` returns at once when it is already a group leader: start a sweep with `setsid -w` and check `ps` before another run on the same files. | Environment rule.
+L398 | GENERAL-PROCESS | A parity check that expects a known difference names the exact set of differing columns, both ways; a column that should differ and doesn't is a vacuous pass. | Verification design.
+L399 | GENERAL-PROCESS | A comparison fixture must hold something to compare (one row at least), or every test passes on code that returns nothing. | Fixture design; the empty week is the example.
+L400 | GENERAL-CODE | A Node script that runs the app's TypeScript loads it through Vite's SSR loader (`createServer({ middlewareMode: true, hmr: false })`, `ssrLoadModule`): extensionless imports resolve, no build. | Vite technique.
+L401 | GENERAL-PROCESS | A builder's provisional reading that changes what a number counts or what is written is behaviour, not display: hold it against SPEC's and TASKS' words; two readings are a spec gap (a card), and look where TASKS drops a word SPEC has. | Decision cards / display-only rule.
+L402 | OVERLOAD-ONLY | `check-warmup-consumers.mjs` scans named helpers, not `groupByParent`. | Dropped script.
+L403 | GENERAL-CODE | A pure module's input types are `Pick`s of the app's own types, and its tests build the real types, so typecheck proves the caller's data fits without a cast. | TypeScript design rule.
+L404 | GENERAL-CODE | The app's `lib` is ES2020 and `tsconfig.app.json` includes the tests: an ES2022 API passes Vitest on Node 22 and fails typecheck (TS2550); run typecheck after writing tests. | Lifted tsconfig fact.
+L405 | GENERAL-CODE | Vitest's timeout can't stop a synchronous infinite loop: a break that removes a loop guard must fail an earlier assertion; test the guard with its dangerous value last. | Vitest fact.
+L405 | GENERAL-PROCESS | A break or mutation run uses its own process group with a wall-clock kill and a memory cap (`NODE_OPTIONS=--max-old-space-size`). | Break-runner rule.
+L406 | GENERAL-PROCESS | A pure function's tests also run every input array reversed and require the same output. | Test design for order-independence.
+L407 | GENERAL-PROCESS | A write path's output is proven through the reader that draws it: apply the output and read it as the screen will, with a break that leaves part of it out. | Verification design.
+L408 | OVERLOAD-ONLY | `resolveRows` takes every state the workout card keeps as input, and its walk keeps that state as the screen does. | Overload workout rules.
+L409 | GENERAL-PROCESS | A test about order compares identities (keys), not displayed numbers that are recomputed whatever the order. | Test design.
+L410 | GENERAL-PROCESS | After every writer that moves ordinals, check each item's place by identity, not only after the writer the fix was for and not only that numbers read 1..n. | Test design; sets are the example.
+L411 | GENERAL-CODE | A screen test that must see a write's effect through the real hooks gives `QueryClientProvider` the app's own `queryClient` singleton and clears it in `afterEach`; hooks invalidate that singleton, not a test's own client. | Lifted queryClient fact.
+L412 | OFFLINE-ADDON | A queue's ordering rule is proven with the earlier write failing in the pass that would send the later one; with nothing failing `createdAt` order hides it. | Sync-queue test design.
+L413 | OFFLINE-ADDON | A fake IndexedDB that applies a write before its first `await` can't tell an awaited write from one that isn't: land writes on a later tick. | Dexie fake design.
+L414 | GENERAL-PROCESS | One value held in two places goes through one rule set, proven by a differential (twin) test after the same operation. | Verification design.
+L415 | GENERAL-PROCESS | A comparison proves only the cases its fixtures hold, and a runner that exits 0 either way is read by its last line beside a control that must disagree. | Verification design; parity script dropped.
+L416 | GENERAL-PROCESS | A break can survive because a later step decides the same outcome: when a branch's only effect is an intermediate value, pin that value in its own test. | Break-proof design.
+L417 | GENERAL-PROCESS | An answer covers only the cases its question held; a case the question didn't hold is read against SPEC as a new one, not inferred. | Decision cards.
+L418 | GENERAL-PROCESS | A stand-in for a table proves only the checks it models: replay the same walk as SQL on the real tables, with a control they must refuse. | DATA verification.
+L419 | GENERAL-PROCESS | A rule that counts or orders stored rows is tested on the rows earlier steps leave behind (gaps, skipped ones), not only fresh in-order fixtures. | Test design.
+L420 | OFFLINE-ADDON | The sync queue's tests run on a fake that models the server (FKs, cascade, call shape, lost replies, later-tick writes); a held request is released in `finally` and `afterEach`. | Sync-queue test harness.
+L421 | GENERAL-CODE | A fake store returns copies of what it holds (`structuredClone`), as the real store does, or an in-memory change reads back as a stored write. | Fake design; Dexie is the example.
+L422 | GENERAL-PROCESS | A break that survives a named proof is one of several holes: sweep the whole function in a scratch copy, classify every survivor, sweep again after adding tests. | Break-proof method; sweeps now banned, kernel stands.
+L423 | GENERAL-PROCESS | An answer reaches as far as its words and the option it took, not the files a note names; read the question before narrowing; a narrowing is a scope decision to read as a regression. | Decision cards.
+L424 | GENERAL-CODE | A tracked file that quotes a theme variable by its full name puts it in the built stylesheet (`@theme inline`): build such a name from parts and compare the stylesheet character by character. | Tailwind v4 scanning fact.
+L425 | GENERAL-CODE | A screenshot tool's `innerText` dump holds no input's value: a board with typed boxes is held against its picture for the numbers. | Screenshot-dump fact.
+L426 | GENERAL-CODE | A test that writes a capture fixture captures before it asserts, so a broken rule still writes the fixture the Chromium break measures. | Capture-fixture rule.
+L427 | GENERAL-CODE | A typed box keeps half-written text apart from the committed value and every consumer reads it settled; none relies on a blur coming first (Safari gives a tapped button no focus); test out-of-bounds, switch away and back. | Form-control rule for any app.
+L431 | GENERAL-CODE | A tap that moves no focus is proven in real Chromium by calling the element's own `click()` from script; a real click blurs first and hides a missing clear. | Playwright technique.
+L432 | GENERAL-PROCESS | A rule "everywhere X, use token Y" is proven by a syntax-tree scan over every file, exceptions listed exactly, a break per shape, a comment-only control; a regex over a line is fooled by comments. | Static-check design (tokens check).
+L433 | GENERAL-PROCESS | A colour scan is blind to a swapped ternary, a child on another colour and the accent through a named constant: a screen chunk asserts the drawn colour at its screen, and the reviewer reads computed colours. | Limits of static checks.
+L439 | GENERAL-PROCESS | A screen change is checked on the real screens before the merge, by computed style, with the deployed app as the control. | Screen verification (before the release in the starter).
+L440 | GENERAL-CODE | Build the branch as production builds it into a folder outside the worktree and serve it through Playwright's `route.fulfill` on a made-up https origin; it then signs in to real data. | Playwright technique.
+L441 | GENERAL-CODE | Chromium launched under the agent proxy sends `127.0.0.1` through it despite a bypass list, and the relay answers 405 to plain HTTP. | Playwright/environment fact.
+L443 | GENERAL-CODE | A downscaled screenshot hides a change like near-white to near-black: read the pixels. | Screenshot fact.
+L444 | GENERAL-PROCESS | A family of similar controls is tested with a table over every member, and a boundary with its first value past it. | Test design.
+L445 | GENERAL-PROCESS | A fixture whose render changes on purpose is edited by literal replacement and proved by its parity test; a re-capture differing only by React `useId` keeps the committed file. | Fixture hygiene; `useId` noise already standing.
+L446 | GENERAL-CODE | When `onMutate` writes the merged value that `mutationFn` then reads, a break in `mutationFn` alone is an equivalent mutant: break the pair together. | TanStack mutation fact.
+L447 | GENERAL-PROCESS | A captured render fixture has no parity test, so a rebase leaves it stale silently: after a rebase re-capture (`CAPTURE_RENDER=1`), restore from a `cp` backup, diff; a colour-only diff keeps a layout fixture valid; never take a picture from a stale one. | Fixture hygiene at merges (L28).
+L450 | GENERAL-PROCESS | A TASKS list of the places that read something is a hint, not a census: scan every read shape (property, bracket, destructured, whole object) in the syntax tree; settle "needed or addition" by running the writer and the screen with and without. | Reviewer rules.
+L454 | OVERLOAD-ONLY | This environment's `VITE_SUPABASE_*` are production's; staging scripts set `STAGING_*` and run `staging-guard.mjs` first. | Adam's project environment.
+L454 | GENERAL-CODE | A test that fetches mocks `src/lib/supabase`; a script that loads the app's client sets its URL and key explicitly, never from the ambient environment. | Test isolation on the stack.
+L455 | GENERAL-CODE | A data hook a page starts to call is mocked in every test file of that page (page tests mock each hook and mount no provider), with a real answer: `[]` is no rows, `undefined` is not read yet. | Vitest mocking pattern.
+L456 | GENERAL-PROCESS | A screen test that mocks its read service proves nothing about the reads: the service gets its own test against rows that belong elsewhere, and its embeds the embeds check; ask whenever a screen test mocks the reading module. | Reviewer rule.
+L457 | GENERAL-CODE | A save of a draft built from an earlier read reads again first and refuses when the source changed, or a stale draft overwrites another device's edits. | Concurrency rule for any multi-user app.
+L458 | GENERAL-CODE | The access-list test reads every file under `src/` for a `.from(` with a computed table, tests and comments included: write a mock's `from` with spread arguments, don't quote the pattern in a comment. | Lifted verify-rls-tables test behaviour.
+L459 | GENERAL-PROCESS | A capture is checked for the variant and state it shows (read its dump's markers) before it is held against the prototype's board. | Screenshot review rule.
+L460 | GENERAL-PROCESS | A test that leaves a field out of a check its spec names is read against SPEC before it is accepted; the module not keeping the value is no reason. | Reviewer rule.
+L465 | GENERAL-PROCESS | A value one module writes and only another reads is probed through that reader. | Verification design.
+L466 | GENERAL-PROCESS | A rule that takes screen-kept state is also run from the states a screen starts in without it (reload, reopened record, another device): sequence tests add steps that drop that state. | Test design.
+L470 | GENERAL-PROCESS | A writer that takes an item's place and a selected container is tested on an item that isn't the last, in a container that isn't the first; a draft-derived walk can't see which item was picked. | Test design.
+L474 | GENERAL-PROCESS | A walk that proves which item an edit picked builds its expectation beside each step with plain array operations on a copy, compares whole state each step, and asserts it reached every kind of edit at every place. | Test design.
+L475 | GENERAL-PROCESS | A break runner decides by exit code, never by a pattern in test output; check it on a must-catch, a must-survive and a comment-only control; timeout far above the heaviest test; one runner per tree; flag ReferenceError, crash or timeout and re-run alone. | Break-runner rule.
+L480 | OVERLOAD-ONLY | "The screens 1.2 rebuilds and their shared components" is proven by module reachability (`moduleGraph.ts`), both ways; Coach stays outside. | 1.2 rebuild scoping.
+L481 | GENERAL-CODE | A test title or any string counts for Tailwind as much as a comment: a plain English word that is a utility built a rule; reword it and compare stylesheets byte for byte. | Tailwind v4 scanning fact.
+L482 | GENERAL-PROCESS | Two places that state the same number are proven by a twin on one world through their real reads; better, one reads the other's function. | Verification design.
+L483 | GENERAL-CODE | A derived read's key can sit under the prefix its sibling is already refreshed by (`[KEY, 'statuses', id]`), so every writer that refreshes the list refreshes it; prove with a real mutation and a break that moves the key out. | TanStack key design.
+L484 | GENERAL-CODE | An esbuild bundle is no import graph: its resolver matches file names without regard to case; walk Vite's Rollup build (`write: false`, non-relative imports external, `getModuleInfo().importedIds`). | Vite/esbuild fact.
+L485 | GENERAL-PROCESS | A number a rule gives a board's case is held against the board and the full text of every answer about it, options included, before a test pins a different one. | Decision cards / reviewer rule.
+L489 | GENERAL-PROCESS | A writer that runs on every draw and depends on state only one device keeps is tested with two devices whose state differs; a tie-break keys on what every device reads. | Test design for device-local state.
+L490 | GENERAL-PROCESS | A fallback for rows written before a column existed is run through every writer that rewrites such a row, not only through the reads. | DATA verification.
+L491 | GENERAL-PROCESS | A writer that takes its target from what the screen has open is tested with something open other than the default (another week, a clock moved past midnight). | Test design.
+L492 | GENERAL-PROCESS | A test file removed with the code it tested is read describe by describe first: one describe may test readers that stay. | Reviewer rule.
+L493 | OVERLOAD-ONLY | The `--base` control of a real-screen accent scan is a screen 1.2 doesn't rebuild. | 1.2 rebuild scoping.
+L494 | GENERAL-PROCESS | A wording fix is looked for in every test that pins the old text, not only the file a review names, and the whole folder runs before it is called done. | Reviewer/builder rule.
+L495 | GENERAL-CODE | An effect that writes is proven line by line: its guard, its key, its clamp and its dependency list are each behaviour, each with a test that fails without it. | React effect rule.
+L496 | GENERAL-CODE | A test that moves a page across midnight fakes `Date` alone (`vi.useFakeTimers({ toFake: ['Date'] })`) and dispatches `visibilitychange` with `document.visibilityState` set as an own property. | Vitest/React technique, pairs with L214.
+L497 | GENERAL-PROCESS | A fixture gives a joined row values that differ from its parent's, or a mapper reading the wrong one of the two can't be seen. | Fixture design.
+L498 | GENERAL-PROCESS | A live-check line that names a screen's words is held against the prototype's frames before it is run: a word shown only after an action means the check is that action. | Reading TASKS checks.
+L499 | GENERAL-PROCESS | A tool that presses a write on a real screen waits for the label of the finished direction and a quiet network before closing; a pending label is not a done signal; fingerprint content before and after. | Live-check rule.
+L500 | GENERAL-CODE | Two routes that render one page component keep one instance and its state unless their elements' keys differ; the proof removes both keys against a stateful stand-in. | React Router fact for the app frame.
+L501 | GENERAL-CODE | A write followed by a navigation returns its invalidations from `onSuccess`, so the mutation stays pending until the lists are read again; `void` on the promise fails the test. | TanStack rule.
+L502 | GENERAL-CODE | `ConfirmDialog` has no `role="dialog"` so a dialog check can't find it; a dialog or banner that prints a typed name wraps it (`overflow-wrap: anywhere`) and is checked in Chromium with an 80-letter name. | Lifted ConfirmDialog fact.
+L503 | GENERAL-PROCESS | A writer that takes the selected container is pressed on four containers (first, two middle, last) in a world where no two are alike; alike ones hide writes to the right place in the wrong container. | Test design.
+L509 | GENERAL-PROCESS | A random walk's "reached every kind at every place" is a floor per (kind, place) pair counted over edits that changed something; refused or no-op edits don't count. | Test design.
+L510 | GENERAL-PROCESS | A sweep's catch counts only when a failing assertion caused it; a control "caught" by a timeout or disk full is a flag: re-run alone, print counts, check output for non-assertion errors. | Break-runner rule.
+L514 | OVERLOAD-ONLY | `check-sheet-overflow.mjs` measures a `ConfirmDialog` through a scratch copy with `role="dialog"`; the no-wrap copy must fail. | Dropped script.
+L518 | GENERAL-PROCESS | Worktrees share one `.git`, so another agent's fetch moves `origin/<base>` under you: diff a branch against `git merge-base origin/<base> HEAD`, never against `origin/<base>`. | Worktree mechanics.
+L519 | GENERAL-PROCESS | A full disk during `npm run build` exits 1 and leaves a 0-byte entry JS with a right-looking stylesheet name: remove `dist` and rebuild; check `df -h /` before copying a worktree with `node_modules`. | Environment rule.
+L520 | GENERAL-PROCESS | An input a merged module reads from a write a later chunk makes is named in that chunk's TASKS when the module merges; amend TASKS in the merge's docs PR. | Build loop / TASKS upkeep.
+L524 | GENERAL-PROCESS | A condition that guards stored values for an input only a later chunk can produce is pinned now, with that input, and logged under tests owed if missing. | Tests owed rule.
+L525 | GENERAL-PROCESS | A rule "X changes nothing else" is asserted on every record that stays, not only the ones its words name. | Test design.
+L526 | GENERAL-PROCESS | A sweep run with `--bail=1` re-runs without bail every verdict that isn't CAUGHT: the JSON report can miss a failure under bail. | Break-runner rule (Vitest).
+L527 | GENERAL-PROCESS | A walk's floor counts the cases of the rule under test, not only the kinds of edit, and the walk is built in phases to reach each case. | Test design.
+L528 | GENERAL-PROCESS | "Always" on a small world is an enumeration with an oracle of plain loops; a control that says "X restores the original" is enumerated before it is written. | Test design.
+L529 | GENERAL-PROCESS | A data migration is judged against an independent restatement of its rule on generated worlds (floor per case), run twice (second run changes nothing), with a hash of columns it must not write, and by what the user sees; the SQL's counts are never the oracle. | DATA migration verification; rehearse script dropped.
+L530 | STAGING-RELEASE | A seed copies its own numbers rather than call a planning function whose rules change; prove by canonical dumps on old and new function. | Staging seed.
+L531 | STAGING-RELEASE | A seed's copy keys rows by structure, never by a link column a function writes, and checks its result before it ends (`raise exception` rolls everything back). | Staging seed.
+L533 | GENERAL-PROCESS | A check that compares a copy with its source also checks the source is not empty, or "equal" can mean both NULL. | Verification design.
+L534 | GENERAL-PROCESS | Prove each clause of a check load-bearing by switching it off together with the mistake it stops. | Verification design.
+L536 | STAGING-RELEASE | Signing in to staging is a write (last sign-in, sessions): an agent that may not touch staging hands read-only SELECTs to the person who may. | Staging access.
+L537 | GENERAL-CODE | pg-safeupdate refuses a bare `DELETE`/`UPDATE` inside a migration's `do` block and in a seed, and the plain replay can't see it: prove them in a `supabase_admin` session with `load 'safeupdate'` and its canary. | Migration proof on the replay.
+L538 | GENERAL-CODE | `check-migration` names a flagged `do` block by its first words, not the statements inside it: read a flagged block whole. | Lifted script behaviour.
+L539 | GENERAL-CODE | `String.replace` reads `$$` in a replacement string as a pattern: SQL built by replacement passes a function (`() => text`) or a body's `$$` is eaten. | JS fact for migration/seed scripts.
+L540 | GENERAL-PROCESS | For a migration that only replaces a function, "nothing else changed" is a schema diff of replay snapshots before and after the file, not a grep. | DATA verification; compare-schema is dropped, the kernel stands.
+L541 | STAGING-RELEASE | A re-seed is confirmed by rows only the intended seed writes, read as the account, before any step depends on it. | Staging re-seed.
+L542 | GENERAL-PROCESS | A `dockerd` started as a background task stops at the task's time limit and its containers with it: start it with the longest limit, then `docker start` the kept containers. | Environment rule for the replay.
+L543 | GENERAL-PROCESS | A PR whose base moved is updated by merging the base into its branch, never force-pushed; before merging, check the merged tree equals the reviewed patch (md5), re-run every script, wait for the PR's own CI run on the merge commit. | Build loop merge mechanics.
+L544 | STAGING-RELEASE | Bump the seed version string with every seed change; keep `select '<version>' as seed_version;` the file's last statement. | Staging seed.
+L545 | GENERAL-CODE | A table used only by an embed or an RPC op counts as used in the access-list test (read from the syntax tree, never comments or tests); RLS applies to an embed as the caller; the other direction is still `.from()` only. | Lifted verify-rls-tables behaviour.
+L548 | GENERAL-PROCESS | A guard that skips an unchanged write is tested with a value that differs in exactly one compared column, for each column it compares. | Test design.
+L549 | GENERAL-PROCESS | A round-trip guard is tested where the conversion loses something; a typed box is tested for every way it commits (Enter and blur). | Test design.
+L550 | GENERAL-CODE | A hook's optimistic patch and its rollback are part of the writer: assert the cache's columns while the write is held and after a refusal, not only the screen after a refetch. | TanStack mutation testing.
+L551 | GENERAL-PROCESS | An absence test needs a fixture where the thing would appear without the guard. | Test design.
+L552 | GENERAL-CODE | Two mechanisms that guard one state make each other's break an equivalent mutant: keep one, with a test of its own. | State-design rule.
+L553 | GENERAL-CODE | A typed number is matched against a pattern before `parseFloat` ("5o" reads 5, "1e3" reads 1000): digits with at most one `.` or `,`. | Form/number-format rule for any app.
+L554 | GENERAL-PROCESS | A change made of several writes is proven cut short, on a stateful stand-in that models the tables' checks, foreign keys and cascade and can refuse a write. | DATA verification.
+L555 | GENERAL-CODE | jsdom drops `flex: 1 1 0` (write `1 1 0%`), and `captureRender` writes `innerHTML`, losing the element's own style: frame the element in a wrapper. | jsdom fixture fact.
+L556 | GENERAL-CODE | A hook a page starts to call either lives in a component that renders only while its sheet is open, or is mocked in every page test. | Vitest mocking pattern (extends L455).
+L557 | GENERAL-PROCESS | A break runner resolves its output paths to absolute ones: vitest's `--outputFile` is relative to its cwd, the worktree. | Break-runner rule.
+L558 | GENERAL-CODE | An accessible name built from inline spans has no space between them ("SESSIONDELOAD"): match such a control through a helper that reads its text parts. | Testing Library fact.
+L559 | GENERAL-CODE | A state word the page draws in two places is queried through a `data-*` attribute of its own, not by text. | Testing/markup rule.
+L560 | GENERAL-CODE | A mock that returns fixed data whatever it is asked hides which argument the page passed: record the argument and assert it. | Mock design.
+L561 | GENERAL-PROCESS | A test file removed with the module it tested is held rule by rule against the replacing module's tests, with a break per rule it pinned. | Reviewer rule (extends L492).
+L562 | GENERAL-CODE | The access-list test's computed-table scan also fails a test stand-in that calls `from(variable)`: call it as a value, `(fake.client.from as (t: string) => …)(table)`. | Lifted verify-rls-tables behaviour.
+L563 | OVERLOAD-ONLY | `fakeDeloadDb.testutil.ts`'s chain has no `.in`; a test adds it locally. | Overload test utility.
+L564 | GENERAL-PROCESS | A guard keyed on one stored value is tested with fixtures where the values it must not read go both ways (longer and shorter, present and empty). | Test design.
+L565 | OVERLOAD-ONLY | "This week" in Plan is the open week's own query, never the every-week list's copy. | Overload screen.
+L566 | GENERAL-CODE | A read TanStack pauses offline is neither loading nor failed: `fetchStatus === 'paused'` gets a state of its own (offline, TRY AGAIN) or the spinner never ends. | TanStack fact; starter's couldn't-load/offline states.
+L567 | GENERAL-CODE | A test that draws a second world after `cleanup()` also clears the app's `queryClient`: the singleton keeps the first world's answers. | Lifted queryClient fact.
+L568 | GENERAL-CODE | A branch that treats a write as already done (a `23505` race) still refreshes what the screen reads, and is tested by what the screen shows after it. | Write-path rule.
+L569 | OFFLINE-ADDON | A writer an effect runs on every draw is tested through a request that keeps failing while online: flush, invalidate, refetch and re-queue can loop; key it on what is still queued. | Sync-queue effect hazard.
+L570 | OVERLOAD-ONLY | A place assigned from the card's list and the logs is tested with the list empty and the logs holding places. | Overload workout rules.
+L571 | GENERAL-PROCESS | A break that survives is read as a hole in the tests or an equivalent mutant before a test is written, and the fixture gives the break a different value to show. | Break-proof method.
+L572 | GENERAL-PROCESS | A change of the source a screen reads re-captures every fixture of that screen and diffs it before the merge; a fixture fed through a hook nothing reads draws the empty state silently. | Fixture hygiene.
+L573 | OVERLOAD-ONLY | A mocked staged head's `SetLog` carries `stageKind`. | Overload fixture.
+L574 | OFFLINE-ADDON | The pending-sync and failed-sync markers read different stores, so each has a test with the other state present. | Offline indicator.
+L575 | GENERAL-PROCESS | A worktree-isolated agent's shell refuses a command whose text holds the word `source`, and some compound commands with `$`-variables: use Grep/Read tools and run scripts as files. | Environment rule.
+L576 | STAGING-RELEASE | A re-seed is checked by the seed's own shapes, read as the account, whenever a function the seed calls changed since the last re-seed. | Staging re-seed.
+L577 | GENERAL-PROCESS | A break that survives at the screen can be an equivalent mutant there: name every test file the line matters to, and assert where the line alone does the job. | Break-proof method.
+L578 | GENERAL-CODE | A stand-in for a sheet or child component calls each function prop with every argument the real caller passes. | Test stand-in design.
+L579 | GENERAL-PROCESS | A re-captured fixture can differ only by random ids (`data-row-key`): put the committed fixture back and re-shoot only where an element really changed. | Fixture hygiene.
+L580 | GENERAL-CODE | A new variant of a shared component leaves the old variant's serialised markup byte for byte as it was; re-captured fixtures are diffed with ids normalised before any is committed. | Shared-component rule.
+L581 | GENERAL-PROCESS | A screen that routes a call through a rule whose own guard gives the same answer can't show the routing: the proof is the break that removes the guard. | Break-proof method.
+L582 | GENERAL-CODE | A screen test that drives several writes has the writer's stand-in append the record and re-renders by hand, or the next row never becomes current. | Test technique.
+L583 | OVERLOAD-ONLY | Every open workout row has a LOG button; scope "the LOG" to `[data-current-set]`. | Overload screen.
+L584 | GENERAL-CODE | A mutation's `isPending` guards a double tap only if `onSuccess`/`onSettled` returns the invalidation; otherwise a tap between answer and refetch works from old rows. | TanStack rule.
+L585 | GENERAL-CODE | `await queryClient.invalidateQueries()` inside `act` resolves when the cache holds the new data, not when the screen redrew: assert with `findBy…`/`waitFor`. | TanStack testing fact.
+L586 | GENERAL-PROCESS | A state-transition writer is tested from every starting state to every target, replaying the writes against the table's checks at every prefix, stale-column starts included; picking the current state writes nothing. | Test design.
+L591 | GENERAL-CODE | A control whose tap target reaches into a neighbour is hit-tested in real Chromium over every control of every fixture (three points per box, scrolled into view; behind a modal exempt); the fix is `z-index` on the overlapping container. | Hit-test check for screens.
+L592 | GENERAL-CODE | `ConfirmDialog` wraps its TITLE but not its BODY: a caller printing a typed name in the body wraps it in a span of its own. | Lifted ConfirmDialog fact.
+L593 | OVERLOAD-ONLY | A chunk removing the last user of a `SHARED_COMPONENTS` file edits `textOnAccent.static.test.ts`'s list. | 1.2 rebuild scoping.
+L593 | GENERAL-PROCESS | Two chunks editing neighbouring lines of one list conflict at merge: keep both chunks' changes and check the file against both diffs. | Merge mechanics.
+L594 | GENERAL-CODE | A `BottomSheet` footer button sits outside the sheet's `<form>`: it calls the same function as `onSubmit`, and its `disabled` follows the mutation's pending flag. | Lifted BottomSheet/Panel form contract.
+L595 | GENERAL-PROCESS | A TASKS line that names a function for one of Adam's answers is held against the option he took, not only his words. | Decision cards.
+L596 | GENERAL-PROCESS | A rule "this writer reaches only these tables" runs every path of the writer (online and offline) through one table-recording fake. | Absence-test design.
+L597 | GENERAL-CODE | `networkMode: 'always'` on a mutation is proven only with TanStack's `onlineManager.setOnline(false)`: jsdom reads as online. | TanStack testing fact.
+L598 | GENERAL-CODE | An effect keyed on a flag that turns on after the first render is proven by rendering without the flag and then with it. | React effect testing.
+L599 | OVERLOAD-ONLY | `check-sheet-overflow.mjs` finds `role="dialog"` only; an `alertdialog` is measured through a scratch copy. | Dropped script.
+L600 | OFFLINE-ADDON | A writer the card awaits offline is a queue producer plus a change of the screen's copy, never a mutation on the default `networkMode`. | Offline write path.
+L600 | GENERAL-CODE | Change a cached copy only after `await queryClient.cancelQueries(…)`: a read already in flight, cancelled after the change, puts the old copy back; test with `cancelQueries` held open. | TanStack cache fact.
+L601 | GENERAL-PROCESS | A shape or validation check has a refusal case for each of its guards (`typeof`, `=== null` vs `== null` each named by a test). | Test design.
+L601 | OFFLINE-ADDON | A hold that applies to one shape of a queue item has the item's other shape as its control. | Sync-queue test design.
+L602 | OFFLINE-ADDON | A queue rule is also proven in real Chromium on the real IndexedDB queue against a real server, with one request failed once (`route.fulfill` 503), reading `sync_queue` between steps. | Sync-queue live proof.
+L605 | OFFLINE-ADDON | The device's Dexie `set_logs` holds only what this phone wrote or primed: a producer's device update may rightly change nothing. | Dexie cache scope.
+L606 | OVERLOAD-ONLY | With the staging session down to its last open set, the smoke's LOG goes to an added set. | Staging smoke specifics.
+L608 | GENERAL-PROCESS | A playback test derives the state from what the writer was asked, never from a hand-fed fixture, or a dropped write hides. | Test design.
+L610 | OFFLINE-ADDON | A fix that cancels, holds or drops queue items is proven with other records' writes in the same queue, asserting they went in the same pass. | Sync-queue test design.
+L611 | OFFLINE-ADDON | A test that says what a queued write is refused with also asserts whether it was tried (`attempts`). | Sync-queue test design.
+L612 | OFFLINE-ADDON | A queue rule's real-Chromium proof is a differential on the deployed app: same taps before and after, every non-GET request with status, raw `sync_queue` at each step. | Sync-queue live proof.
+L613 | OFFLINE-ADDON | A Dexie version bump is proven on real IndexedDB with both trees' `db.ts`, every table filled as the app fills it, an old tab open, and the old build opening the new file. | Dexie migration proof.
+L614 | GENERAL-CODE | A restored in-memory value is proven through a remount: it is invisible while the row that shows it stays mounted. | React testing technique.
+L615 | GENERAL-CODE | A write an effect starts lands a tick after the `act` that caused it: a reload test settles before it unmounts, or the late write fills the next mount's world. | React testing fact.
+L616 | GENERAL-CODE | A `useState` initial value that a late-arrival effect also fills is an equivalent mutant at the screen: pin the effect's path with a value that arrives after the first draw. | React testing fact.
+L617 | OVERLOAD-ONLY | The rows a swap makes are all `added`; a rule needing "the plan is behind it" asks `movedFromPlan`. | Overload workout rules.
+L617 | GENERAL-PROCESS | When one reader of a flag is fixed, every reader that decides the same thing is checked for the same assumption. | Review method.
+L618 | OVERLOAD-ONLY | A property a drop needs is asked of its head; a drop's own `addedPlace` is null. | Overload domain.
+L619 | GENERAL-PROCESS | A break runner that flags every `TypeError` as "not an assertion" reads each failing test's first message line before calling it a miss: the break can cause the TypeError. | Break-runner rule.
+L620 | GENERAL-PROCESS | A chunk that changes a rule module updates every test that restates the old rule; the full suite finds them; a walk's oracle takes input from the harness's own record, never the module. | Test upkeep.
+L621 | GENERAL-CODE | When a screen module is replaced, every `vi.mock('./OldName')` is renamed: a mock of a path that no longer exists passes silently while the new module loads unmocked. | Vitest fact.
+L622 | GENERAL-CODE | A test that seeds a fake async store lets the previous test's pending writes land first (`afterEach` waits a few ticks). | Fake-store testing.
+L623 | GENERAL-PROCESS | A UI chunk's stylesheet is compared with its base's rule by rule, not by name: `git archive <base>`, `npm ci`, build, postcss over both, read the delta. | UI verification against Tailwind leakage.
+L624 | GENERAL-CODE | The wording check runs on the syntax tree's tokens, not lines, with one lowercase token read as code; skipped tokens are audited by hand once, and a new one-word lowercase label is read by hand. | Lifted check-wording behaviour.
+L625 | GENERAL-PROCESS | A branch made with `git checkout -b <branch> origin/<base>` tracks the base, so a bare `git push` pushes there: create with `--no-track` or push with `-u origin <branch>`. | Build loop git mechanics.
+L627 | GENERAL-CODE | A hook test that refetches settles a few ticks before reading `result.current`: TanStack notifies observers on a later tick. | TanStack testing fact.
+L628 | OVERLOAD-ONLY | A probe of 1.1's queue names logs by queue order; `useLogSet` ignored a given id. | Overload history.
+L629 | OFFLINE-ADDON | The queue test server (`queueServer.testutil.ts`) also answers the session read as `fetchSession` makes it. | Sync-queue test harness.
+L630 | OFFLINE-ADDON | A read that merges some kinds of queued write is probed with the kinds it leaves out, through a writer that reads its result. | Offline read-merge verification.
+L633 | OFFLINE-ADDON | A change to a read the queue feeds is proven by a real-Chromium differential comparing each pass's writes and the raw queue, old build and new. | Offline live proof.
+L634 | GENERAL-CODE | A screen's error state is probed with the refusal in place before a full load of that screen, never after another screen loaded: a cached answer hides the error. | TanStack cache fact; couldn't-load states.
+### The 1.2 usage rules and later sections
+
+L637 | GENERAL-PROCESS | Quiet test output: `--reporter=dot`, filter long script output to failures and summaries, never paste a full passing log. | Usage, already standing.
+L638 | GENERAL-PROCESS | Builders run only the affected test files while working; the full suite and every script once at the end (now: one full suite before the release). | Usage.
+L639 | GENERAL-PROCESS | Reviewers read RULES.md's index and ALWAYS sections plus the sections the brief names; from CONTEXT.md only the touched sections and "Where the build is". | Usage.
+L640 | GENERAL-PROCESS | Compare screenshots from the text dumps first; open a PNG only where the dump can't settle it. | Usage.
+L641 | GENERAL-PROCESS | Never resume a long-running agent; start a fresh one from a short summary file. | Usage, already standing.
+L645 | GENERAL-PROCESS | Builders read code narrowly (grep, line ranges, touched files) and batch independent tool calls in one turn. | Usage, already standing.
+L646 | GENERAL-PROCESS | Only affected test files while building; break proofs run against the specific test file, never the full suite. | Usage / Verification.
+L647 | GENERAL-PROCESS | Keep every command under 5 minutes; split long runs. | Usage, already standing.
+L648 | GENERAL-PROCESS | RULES.md keeps a short index; each reviewer brief names the sections the chunk needs. | Usage / briefs.
+L649 | GENERAL-PROCESS | Chunk reports carried a cost-weighted total beside the context figure. | Superseded: agents never estimate cost, the coordinator reads the meter.
+L652 | GENERAL-PROCESS | No mutation sweeps: DATA chunks one break per place that writes, LIGHT one per call pattern; the reviewer re-runs the builder's breaks and adds one only where a place or pattern has none. | Verification by chunk type, already standing.
+L655 | GENERAL-PROCESS | Batch independent reads, edits and checks into as few turns as possible; turn count is the biggest cost driver; DATA reviews stay at full strength. | Usage.
+L658 | GENERAL-PROCESS | Missing-proof failures don't go back to the builder: the reviewer merges and logs each missing test under "tests owed" in DECISIONS.md, cleared in one tests-only run before the release; behaviour failures go back. | Build loop stop rules, already standing.
+
+### Proposed stack-skill outline
+
+Every GENERAL-CODE line, grouped under headings a `stack` skill file could use. One extra heading, "Shared components", holds the rules about the lifted BottomSheet/Panel and ConfirmDialog, which none of the suggested headings fits.
+
+#### Data in services and hooks (TanStack Query, Zustand, write paths, types)
+- L210 Query owns server data, Zustand UI state · L214 `today` from state refreshed on `visibilitychange`/midnight · L219 `networkMode: 'always'` for an awaited mutation that must fail fast offline · L232 keep the failure a removed read gave · L249 optional field for a new column, `undefined` reads as null · L281 hold screen state across a multi-request change · L282 refusable request first, destructive ones after · L352 Query keeps data when a later read fails · L390 required inputs, no silent defaults · L403 pure modules take `Pick`s of app types · L446 `onMutate` + `mutationFn` merge pairs · L457 re-read before saving a draft, refuse when the source changed · L483 derived keys under the refreshed prefix · L500 one route component instance unless keyed · L501 return invalidations from `onSuccess` · L552 one guard per state · L566 `fetchStatus === 'paused'` is its own state · L568 "already done" branches still refresh · L584 `isPending` guards only with returned invalidation · L600 change a cached copy only after `await cancelQueries` · L634 error states probed before the screen's first load.
+
+#### Tokens
+- L211 colours only through tokens · L212 text on the accent uses `--on-accent`; a tint isn't the accent · L357 theme and accent applied before first paint, proven by a first-paint test.
+
+#### Words file and Polish formats
+- L216 Monday-anchored weeks, `weekStartsOn: 1` explicit · L553 typed numbers matched against a pattern (digits, one `.` or `,`) before `parseFloat` · L624 the wording check runs on syntax-tree tokens; new one-word lowercase labels are read by hand.
+
+#### Migrations and SQL functions
+- L164 `jsonb` key order · L174 sibling data-modifying CTEs see one snapshot · L184 `NOT VALID` injects on new rows only · L196 the replay doesn't load pg-safeupdate · L237 drop a column after the code stops using it · L243 one-active-record writes as an RPC under a per-user advisory lock · L287 pg-safeupdate: `where true` · L294 migrations deploy through the GitHub link, never by hand · L295 prove constraints by violating them · L296 a CHECK passes on NULL · L297 CHECK order lets a live proof write nothing · L298 fixtures as `DO` blocks · L300 additive migration before the code that writes it · L303 `jsonb_populate_record` gives NULL, not defaults · L310 `ON CONFLICT` on a partial index needs its predicate · L329 `now()` is constant per transaction · L330 a BEFORE ROW trigger returning NULL drops the write · L346 drop order: what finds by link first · L537 prove `do` blocks and seeds with safeupdate loaded · L538 `check-migration` names a block by its first words · L539 `$$` in `String.replace`.
+
+#### RLS and grants (and the access list)
+- L174 RLS-blocked writes return zero rows, no error · L197 anon-key reads answer `[]` for hidden rows · L228 RLS per access kind, deviations documented · L244 every table in the access list in the same change · L245 tables ahead of the app are listed and probed · L316 prove functions as `authenticated` with safeupdate loaded · L318 replay `auth.uid()` vs PostgREST 12's `request.jwt.claims` · L319 `SET ROLE` skips role settings · L320 two users on the replay without GoTrue: hosted `auth.uid()`, `auth.users` row, HS256 JWT, gateway · L321 default EXECUTE grants; `pg_temp` copies lack them; branches have none · L325 a "scoped to the caller" test needs a leaking control · L334 revoked anon select reads as a pass; `public` tables need a signed-out read expecting rows · L374 `[auth.email] enable_signup` vs `[auth] enable_signup` · L458 the list test scans every `.from(` including tests and comments · L545 embeds and RPC ops count as uses · L562 stand-ins calling `from(variable)` · L305 L306 L307 replay with users: GoTrue schema, readiness log line, local stack recipe.
+
+#### PostgREST
+- L187 ambiguous embeds (`PGRST201`), the embeds check · L193 `max_rows` cap: page or bound every list read · L202 FK errors carry the constraint name in `message`, no key · L248 named column lists fail on a missing column · L252 upsert writes only named columns · L253 a spread smuggles a column past typecheck · L256 one-column change = `update().eq('id')`, never whole-row upsert · L301 zero-row schema probe with a made-up-column control · L332 read `error.code`, never HTTP status · L351 prove an RPC's shape live as anon (`PGRST202`).
+
+#### PWA
+- L168 a stale service worker reproduces old bugs; update and reload before testing · L341 driving a real service-worker update in Playwright (`serviceWorkers: 'allow'`, `--no-proxy-server`, fetch through Node).
+
+#### Tailwind
+- L355 a CSS property name in a fixture builds a utility · L378 Tailwind v4 scans every tracked file; fixture ids shaped like utilities · L379 grid-line ids · L424 a quoted theme variable lands in the stylesheet · L481 test titles and strings count too; compare stylesheets byte for byte.
+
+#### Testing and fixtures (Vitest, jsdom, Testing Library, mocks)
+- L338 full typecheck across projects · L340 Vitest 4 `STACK_TRACE_ERROR`, fake-timer hangs · L343 `vitest.setup.ts` default `__APP_VERSION__` · L358 psql notices on stderr · L380 `UNDICI-EHPA` on stderr · L383 L384 L555 jsdom drops shorthands: write longhands, frame captured elements · L386 jsdom lays nothing out · L389 `@ts-expect-error` fails only under `tsc` · L394 double press in one `act` · L404 ES2020 lib catches ES2022 APIs · L405 Vitest can't stop a synchronous loop · L411 L567 the app's `queryClient` singleton in screen tests, cleared between worlds · L421 fakes return copies · L426 capture before asserting · L454 tests that fetch mock `src/lib/supabase` · L455 L556 mock every data hook a page calls, with real-shaped answers · L495 effects that write: guard, key, clamp, deps each tested · L496 fake `Date` alone, dispatch `visibilitychange` · L550 assert the cache during a held write and after a refusal · L558 inline spans join without spaces · L559 `data-*` for state words · L560 mocks record their arguments · L578 stand-ins pass every argument · L582 stand-ins append records and re-render · L585 `invalidateQueries` resolves before the redraw · L597 `onlineManager.setOnline(false)` · L598 render without the flag, then with it · L614 prove restored values through a remount · L615 effect writes land a tick later · L616 late-arrival effects vs `useState` initial values · L621 rename every `vi.mock` of a replaced module · L622 let pending fake-store writes land · L627 settle before reading `result.current`.
+
+#### Vite build and Vercel
+- L170 a push isn't a deploy: `vercel ls`/`inspect` and a bundle grep · L171 extensionless imports and invisible env characters only a real deploy finds · L180 local vs deployed hash differ (inlined `VITE_*`) · L182 editing source mid-live-test reloads the page · L363 `vite` dev doesn't serve `api/**` · L385 `__BUILD_TIME__`/`__BUILD_HASH__` make every entry differ; compare stylesheet and vendor chunks · L400 run app TypeScript through Vite's SSR loader · L484 esbuild is no import graph; walk Vite's Rollup build.
+
+#### Screenshots, clipping and Playwright
+- L198 check elements against their clipping ancestor, not `scrollWidth` · L349 `fr` columns with a 1/64 px tolerance · L353 wait for no in-flight read before routing a table · L381 fixed bars in full-page captures · L387 `scrollWidth` is blind inside fixed layers; unbreakable long-text probes · L388 rows that scroll sideways by design are listed, not failed · L425 `innerText` dumps hold no input values · L431 `click()` from script for focus-free taps · L440 serve a built branch through `route.fulfill` · L441 Chromium under the agent proxy · L443 read pixels, not downscaled pictures · L591 hit-test every control in Chromium.
+
+#### Shared components (BottomSheet/Panel, ConfirmDialog, forms)
+- L392 Escape handlers inside a sheet call `preventDefault()` · L393 filterable lists: `height="tall"`, filter in `toolbar` · L395 mounted-ref set on every effect run (StrictMode) · L427 typed boxes keep unsettled text apart; never rely on blur (Safari) · L502 L592 ConfirmDialog has no `role="dialog"`, wraps the title not the body: wrap typed names · L580 a new variant leaves the old variant's markup byte for byte · L594 a footer button outside the `<form>` calls the submit function and follows the pending flag.
+
+### Proposed folds into RULES.md standing sections
+
+Every GENERAL-PROCESS line, by the standing section of the starter's RULES.md it folds into. Lines marked "standing" already appear there in substance and only need their wording checked.
+
+#### Escalation
+- L176 unscoped query → recompute from one account (Escalation 2) · L229 explicit single-user filter on any RLS-bypassing path (standing SQL rule) · L239 which migrations a reviewer may merge, destructive ones stay Adam's · L360 live verification is a hard gate; live writes need a go-ahead (standing 1/17) · L361 Windows cmd for Adam, UTF-16 output · L361 pinned Supabase CLI, never `db dump --dry-run` · L362 dry-run technique without credentials (standing 3).
+
+#### Reviewer rules
+- L163 a passing suite proves no refactor · L167 verify state, not clicks · L169 "never in the bundle" verified, not assumed · L177 audit every consumer · L179 parse output where received · L188 one-account checks rule out one account · L190 executed comparisons · L191 scope decisions read as regressions · L363 deferred checks carried by name · L364 adversarial review, raw vs confirmed · L365 confirmed, not assumed; spot-check subagent reports (standing) · L368 rules written the same session (standing) · L369 review against SPEC's words in the brief · L391 live writes confirmed server-side · L450 TASKS read-lists are hints: syntax-tree census · L456 mocked read services prove nothing about reads · L459 captures checked for variant and state · L460 fields left out of a spec'd check read against SPEC · L465 a value read elsewhere is probed through its reader · L492 removed test files read describe by describe · L494 wording fixes in every test, whole folder run · L498 live-check lines held against the prototype's frames · L499 live tools wait for the final state and a quiet network · L561 removed test files held rule by rule against replacements · L617 fix every reader of a flag, not one · L620 rule changes update every restating test; the full suite finds them.
+
+#### Verification by chunk type
+- Break proofs: L173 L184 L200 L238 ×3 L340 L358 L396 L397 L405 L416 L422 L475 L510 L524 L526 L557 L571 L577 L581 L619 L646 L652 (standing: one break per writing place / call pattern, `cp` backups, no sweeps).
+- Fixtures and captures: L183 L216 L348 L373 L399 L445 L447 L497 L572 L579 L623 (standing: fixture dates from weekdays, `useId` noise, captures re-taken at a batch's last merge).
+- Test design: L178 L181 L185 L192 L195 L199 L242 L254 L398 L406 L407 L409 L410 L414 L415 L419 L432 L433 L439 L444 L466 L470 L474 L482 L489 L491 L503 L509 L525 L527 L528 L533 L534 L548 L549 L551 L564 L586 L596 L601 L608 (standing: rules asserted at the call site with fixtures that tell right from wrong source; both widths).
+- DATA / migrations: L288 L289 L290 L291 L293 L299 L303 L418 L490 L529 L540 L554 (standing: fingerprint only for migrations touching existing rows; migration proven on the replay as the signed-in role with pg-safeupdate loaded).
+- Prototype kit: L344 (standing: prototype smoke at every merge that changes a module it renders).
+
+#### Usage
+- L347 `vitest run --changed` as the affected-files census · L366 no duplicate background checks · L637 quiet output (standing) · L638 L646 affected files while building, one full suite before release (standing) · L639 L648 index + ALWAYS + brief's sections (standing) · L640 text dumps before PNGs · L641 never resume agents (standing) · L645 narrow reads, batched calls (standing) · L647 commands under 5 minutes (standing) · L649 cost-weighted totals (superseded: the coordinator reads the meter) · L655 fewest turns; DATA reviews at full strength.
+
+#### Decision cards
+- L401 behaviour vs display: two readings are a spec gap, a card · L417 an answer covers only its question's cases · L423 an answer reaches as far as its words and the option taken · L485 a board's number held against every answer's full text · L595 TASKS lines held against the option Adam took.
+
+#### The build loop
+- Merges and branches: L186 read every check run, confirm by effect · L189 only the PR's own run on the merged tree counts · L313 `check-runs?filter=all` and `.output.summary` · L367 commit/push only when asked; isolate standalone commits · L518 diff against the merge-base in shared worktrees · L520 later chunks' inputs named in their TASKS at merge · L543 update a moved PR by merging the base, verify the merged tree equals the reviewed patch · L593 list conflicts: keep both chunks · L625 `--no-track` branches or `push -u` · L658 tests owed (standing stop rule).
+- Environment: L359 replay image via `mirror.gcr.io` · L371 `npm ci` first · L372 `pkill -f` kills the shell; marker files · L377 npm rewrites the lockfile: splice by hand · L519 `ENOSPC` leaves a 0-byte entry; check `df` · L542 `dockerd` dies with its task's limit · L575 shells refuse the word `source`.
+
+### Doubtful
+
+Entries classified with less confidence; the class given first is the one used above.
+
+- L169 — GENERAL-PROCESS vs OVERLOAD-ONLY: the principle (verify "never in the client bundle" by construction or a real call) is general, but its only subject, `api/**`, is dropped from the starter.
+- L171 — GENERAL-CODE vs OVERLOAD-ONLY: Vercel Node ESM import resolution matters only once an app adds `api/`; kept as a stack fact for that day.
+- L179 — GENERAL-PROCESS vs OVERLOAD-ONLY: "parse output in the process that received it" is general; the case was Coach's model output (Anthropic SDK dropped).
+- L209 — OVERLOAD-ONLY vs GENERAL-PROCESS: the standing UI rule is Adam's for Overload's set rows, but "an unset feature shows nothing: no empty fields or placeholders" reads as a design principle the prototype could adopt.
+- L281 — GENERAL-CODE vs OVERLOAD-ONLY: holding screen state across a multi-request change is general, but the starter may prefer one RPC per change, making the rule moot.
+- L283 — OFFLINE-ADDON vs GENERAL-CODE: "key device-kept state by the record's id, never by a displayed ordinal" is general advice, but the only such state (drafts) is the offline add-on's.
+- L288 — GENERAL-PROCESS vs GENERAL-CODE: the apt-PostgreSQL stand-in for the replay is an environment workaround; SPEC's Facts to verify 2 decides whether it is needed at all.
+- L305, L306, L307 — GENERAL-CODE vs STAGING-RELEASE: GoTrue/local-stack facts come from staging seeds, but the starter's verify-rls on the replay with two users (Facts to verify 1) needs exactly them.
+- L330 — GENERAL-CODE vs STAGING-RELEASE: the trigger fact is Postgres; its only use was maintenance mode.
+- L342 (first line) — STAGING-RELEASE vs OVERLOAD-ONLY: dismissing the after-update sheet is client-ready-build territory, but the sheet's shape is Overload's.
+- L346 — GENERAL-CODE vs OVERLOAD-ONLY: "notes before sessions" gives too little context to be sure it is a general drop-ordering rule.
+- L357 — GENERAL-CODE vs STAGING-RELEASE: the first-paint test is general; the thing it survived was the update gate, which is deferred.
+- L373 — GENERAL-PROCESS vs STAGING-RELEASE: "seed data is written the way the app writes it" came from staging seeds; kept general because replay seeds and fakes need it too.
+- L375 — STAGING-RELEASE vs GENERAL-CODE: missing default privileges are a Supabase-branch fact, but the same lesson (grants are not implied) sits in L321.
+- L421 — GENERAL-CODE vs OFFLINE-ADDON: "a fake store returns copies" came from the Dexie fake; it holds for any fake (PostgREST stand-ins included).
+- L489 — GENERAL-PROCESS vs OFFLINE-ADDON: two-device tests of a writer that depends on device-local state; only the add-on keeps such state today.
+- L569 — OFFLINE-ADDON vs GENERAL-CODE: the flush–invalidate–refetch–requeue loop is the queue's, but "an effect that writes on every draw can loop with a failing request" is a general React hazard.
+- L596 — GENERAL-PROCESS vs OFFLINE-ADDON: a table-recording fake over every path of a writer is general; the two paths in the case were online and offline.
+- L622 — GENERAL-CODE vs OFFLINE-ADDON: waiting for a fake store's pending writes between tests came from the draft store.
+- L649 — GENERAL-PROCESS vs OVERLOAD-ONLY: the cost-weighted total in chunk reports is superseded by BUILD.md 2.2 (the coordinator reads the meter), so it folds into Usage only as history.

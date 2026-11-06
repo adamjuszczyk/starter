@@ -11,7 +11,7 @@ The starter is the template repo every new app starts from, Adam's or a client's
 ## What exists
 - `SPEC.md`: the spec, verdict list confirmed by Adam 2026-11-06. Behaviour.
 - `prototype/`: the spec chat's prototype, standalone (its own `package.json`, components, screens, words file, tokens); `bash prototype/check/run.sh` builds it, inlines it into one page, checks every DEMO state at both widths in both themes and screenshots every state in light and every fourth in dark into `prototype/check/shots/` (not committed). Layout, order and wording. Chunk 8 turns it into the kit that runs the real screens, after freezing its screenshots in `design/0.1/prototype/`.
-- `TASKS.md`: the plan. Estimate, Decided (49 technical decisions with reasons), Questions for Adam (2 questions, 2 to-dos), the SPEC sweep, the file structure and stack, the data models (the theme per device, the access list), chunks 0–10 with lifts and verification, the release steps, the "Facts to verify" record, the process notes, and the appendix sorting Overload's RULES.md rules.
+- `TASKS.md`: the plan. Estimate, Decided (49 technical decisions with reasons), Questions for Adam (2 questions, 2 to-dos), the SPEC sweep, the file structure and stack, the data models (the theme per device, the access list), chunks 0–10 with lifts and verification, the release steps, the "Facts to verify" record, the process notes, and the appendix sorting Overload's RULES.md rules (413 lines over 377 entries, with source lines).
 - Nothing under `src/`, `supabase/`, `scripts/`, `.claude/` or `docs/` yet.
 
 ## Repo facts
