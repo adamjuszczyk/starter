@@ -114,3 +114,9 @@ Stage: build (chunk 1)
 What happened: `check-build.mjs`'s first `skipWaiting` check was a grep, and it passed with `skipWaiting` off (workbox's `SKIP_WAITING` message listener contains the text). The break proof caught it; the check now needs the unconditional call and no listener.
 Possible change: none to BUILD.md (the break proof did its job); kept as a "Checks that lied" candidate for the stack skill.
 Verdict:
+
+## B9 The 30% rule fired on an S chunk running under its type's figure   status: open
+Stage: build (chunk 0)
+What happened: chunk 0 (LIGHT · S) carried the LIGHT figure ($12, 0.67 h) because sizes were not measured apart; it ran ≈ $7.6 and ≈ 0.35 h, more than 30% under, and the rule stopped the build though the build as a whole was on its estimate (chunk 1, the first L, was within).
+Possible change: the estimate carries per-size figures once a build has measured them (B0 measured S ≈ $8, M ≈ $10, L ≈ $13.5), or the rule after chunk 0 applies only to running over.
+Verdict:
