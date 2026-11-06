@@ -1,0 +1,5 @@
+{
+  "fx_own": "own",
+  "fx_shared": "signed-in",
+  "fx_public": "public"
+}
