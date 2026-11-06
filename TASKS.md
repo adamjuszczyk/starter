@@ -1,7 +1,9 @@
 # Starter 0.1 — TASKS
 
 Planned 2026-11-06 in one cloud session (Fable 5.1, max), from `SPEC.md` (specced 2026-11-04/06, verdicts confirmed by
-Adam 2026-11-06), the prototype in `prototype/` (the zip `starter-prototype-src.zip`, unpacked as is; its 19 DEMO states
+Adam 2026-11-06; two amendments from the spec chat the same day, applied here: the sign-in's three outcomes and the
+per-app public-or-private repo), the prototype in `prototype/` (the zip `starter-prototype-src.zip`, unpacked as is,
+plus the amendment's two words and Offline sign-in state; its 20 DEMO states
 were built and checked in this session at 390 and 1280 px in both themes: no page errors, no clipping; the zip's check
 screenshots every state in light and five in dark) and
 Overload (`adamjuszczyk/overload-v2`, branch `staging`, commit `8e00877`, 2026-11-02; cloned read-only beside this repo
@@ -129,8 +131,8 @@ Technical and architecture decisions, each with its one-line reason. The reviewe
    reads the session with `supabase.auth`, so hooks in `.tsx` count). The `.from(` matcher carries Overload's
    `(?<!Array|Buffer)` lookbehind, so `Array.from` in `Table.tsx` is not a hit. Sign-in therefore moves into
    `src/features/auth/authService.ts` (Overload calls `supabase.auth` inside `LoginPage.tsx`), and the service throws
-   on a resolved `{ error }` as well as on a network failure, so the screen has one path to its one line (supabase-js
-   resolves with `{ error }`; it does not throw).
+   on a resolved `{ error }` as well as on a network failure, classified as Decided 24 says, so the screen has one path
+   to its three lines (supabase-js resolves with `{ error }`; it does not throw).
 8. **The build line is a words-file function**, `settings.buildLine(version, hash, time)` →
    "Wersja 0.1.0 · build 3f9c2a1 · 06.11.2026 13:52"; the prototype writes it as literal text, which the words check
    forbids in `src/`.
@@ -201,14 +203,23 @@ Technical and architecture decisions, each with its one-line reason. The reviewe
 23. **The theme is `src/features/settings/useTheme.ts`:** one localStorage key `theme`, every access in try/catch,
     `system` removes `data-theme` so `tokens.css`'s media query decides; applied in `App` above everything, where
     Overload applies its theme.
-24. **Sign-in keeps SPEC's wording as written:** one error line whatever Supabase says (an offline attempt shows it
-    too), no offline strip on the sign-in screen (not in the prototype). Listed for the first app's vibe check.
+24. **Sign-in has three outcomes and never shows Supabase's raw message alone** (SPEC "Screens" as amended
+    2026-11-06, replacing the first wording). `authService.signIn` classifies the failure and throws it: supabase-js's
+    `AuthApiError` for bad credentials → `wrong`; a fetch failure (`AuthRetryableFetchError`, a `TypeError` from
+    `fetch`) or `navigator.onLine === false` → `offline`; anything else → `failed` with `error.message` as the reason.
+    The screen shows `t.signIn.wrong`, `t.signIn.offline` ("Brak połączenia. Spróbuj ponownie, gdy wróci.") or
+    `t.signIn.failed` ("Nie udało się zalogować.") followed by `t.common.reason: <reason>`, the Klienci list's reason
+    pattern. No offline strip on the sign-in screen (not in the prototype). The DEMO entry has an Offline state
+    (added to `prototype/` with the two words on 2026-11-06, checked clean); `failed` has no DEMO state (the amendment
+    names none), chunk 4's test covers it.
 25. **Tabs live in `src/shell/tabs.ts`**; the starter has Settings only; `/` and any unknown path go to the first tab
     (Overload's `*` → `/today`).
 26. **No Supabase CLI in the repo or the environment:** the replay is Docker + psql in the container, Overload's way.
-27. **Where Docker cannot pull the image (Fact 2), the replay-based checks are proven by the PR's `migration-replay`
-    run**, and the reviewer reads that run the way `reviewer-data.md` reads the Supabase Preview runs; the builder
-    says so in its report instead of skipping.
+27. **The replay in cloud sessions runs in the Starter environment** (Adam's answer to Q1, 2026-11-06): agents try
+    `mirror.gcr.io` first (Overload's L359), then Docker Hub, where the environment's network secret (a read-only
+    Docker Hub token for `auth.docker.io`) lifts the shared anonymous quota; the PR's `migration-replay` run stays the
+    second proof, and the only one when both pulls fail, which the builder says in its report instead of skipping (the
+    reviewer reads that run the way `reviewer-data.md` reads the Supabase Preview runs).
 28. **The RULES.md sort (Fact 5, appendix): 413 lines over every entry from Overload's line 161 on.** The 156
     GENERAL-PROCESS lines fold into the standing sections they belong to (chunk 9, by the appendix's "Proposed folds");
     the 150 GENERAL-CODE lines go to the `stack` skill (chunk 7, by its "Proposed stack-skill outline"); the 34
@@ -218,7 +229,7 @@ Technical and architecture decisions, each with its one-line reason. The reviewe
 29. **Agent definitions read the base branch, the default branch and whether the app has staging from `CONTEXT.md`
     "Repo facts"** (three named lines), never from the definition; until chunk 9, Overload's definitions are used with
     the coordinator's brief overriding `staging`/`master` with `main` and naming no staging check.
-30. **Reference screenshots are committed as PNG** (76 files, ≈ 4.5 MB at the measured ≈ 60 KB each) in
+30. **Reference screenshots are committed as PNG** (80 files, ≈ 5 MB at the measured ≈ 60 KB each) in
     `design/0.1/prototype/`; Overload keeps its built captures the same way, and a comparison needs the pictures, not
     a rebuild. The checklist's hand-off says what a new app does with `design/0.1/` (keeps it as the design reference
     until its own first prototype replaces it).
@@ -271,10 +282,10 @@ Technical and architecture decisions, each with its one-line reason. The reviewe
     the phone layout on a phone (44 px controls); the kit renders `AppRoutes` without a second `WidthRoot`, and an
     `App.test.tsx` case asserts the sign-in page renders inside `[data-layout]`.
 46. **Every DEMO entry carries one expectation (a text or an element) that the kit's check asserts after applying the
-    state**, so a check that visits 19 states cannot pass with 19 identical screens (the browser check takes over
-    what Overload's jsdom smoke tests asserted per state). The two sign-in states that are the page's own
-    (`wrong password`, `signing in`) are driven by the check: it fills the fields and submits, and the kit's fake
-    `authService.signIn` rejects or stays pending by the DEMO state.
+    state**, so a check that visits 20 states cannot pass with 20 identical screens (the browser check takes over
+    what Overload's jsdom smoke tests asserted per state). The three sign-in states that are the page's own
+    (`wrong password`, `offline`, `signing in`) are driven by the check: it fills the fields and submits, and the kit's
+    fake `authService.signIn` rejects with `wrong` or `offline`, or stays pending, by the DEMO state.
 47. **`replay-migrations.sh` applies the Auth service's function definitions before the first migration**, as
     `supabase_admin`: a migration that calls `auth.jwt()` is valid on a hosted project and would otherwise fail every
     replay (the image's init script defines `uid()`, `role()` and `email()` only). The file is chunk 2's.
@@ -311,6 +322,9 @@ every PR) is not affected; Overload's has run there for weeks.
   Google's public mirror `mirror.gcr.io` and tags it; checked here at 15:25: the mirror is reachable through this
   session's proxy (PostgREST's manifest found, an alpine image pulled), but it did not hold the Supabase image's tag
   at that moment (a mirror serves what it has cached), so it is a try, not a guarantee.
+**Answer (Adam, 2026-11-06): B.** A free Docker Hub account with a read-only token, saved as a network secret for
+`auth.docker.io` on a new personal cloud environment named **Starter**; agents still try `mirror.gcr.io` first.
+Applied: Decided 27, "Process notes" (the environment), CONTEXT.md "Repo facts".
 What you'd regret if wrong: with A, a verify-rls that was never broken against the real image by a reviewer; with B,
 five minutes making an account and a token.
 
@@ -323,18 +337,21 @@ GitHub tools this session has cannot create tags or releases.
   deleted by you if it lands); if it can, the release is the agents'; if not, A.
 What you'd regret: with neither decided, the last step of the build waits on you without warning. SPEC says "no
 checklist page for Adam" for this release; option A is two commands, not a page.
+**Answer (Adam, 2026-11-06): B.** Setup tries one throwaway tag; if it does not land, Adam runs the two commands
+from the release note. Applied: "Before the release", step 5.
 
-**Two to-dos that are yours (repository settings on GitHub, one click each):**
+**Two to-dos that were yours (repository settings on GitHub, one click each). Done, Adam, 2026-11-06: the repo is a
+template and head branches are deleted automatically.** Kept as the record:
 - **Mark `adamjuszczyk/starter` as a template repository** (Settings → General → "Template repository"): the
   checklist's step 1 creates every new app "from the starter template", which needs the flag; agents cannot set it.
 - **Turn on "Automatically delete head branches"** on this repo (Settings → General): Overload's L31 found agents
   cannot delete branches through the proxy, so 1.2.1's close left 265 merged branches for you; with the setting on,
   each squash-merged chunk branch goes by itself.
 
-Everything else the plan decides itself (above). Two things SPEC already decided that a user would notice, listed for
-the first app's vibe check, not reopened here: an offline sign-in attempt shows "Nieprawidłowy e-mail lub hasło" (SPEC:
-one line whatever the message; see Decided 24), and a client app's repo is public (SPEC item 8, step 1; nothing in
-this plan depends on it, and the template flow works for a private repo too).
+Everything else the plan decides itself (above). The two things this list first flagged for the vibe check were
+amended by the spec chat on 2026-11-06, word for word in SPEC.md: the sign-in's three outcomes (SPEC "Screens";
+Decided 24; the prototype's words and DEMO entry) and the repo public or private per app (SPEC item 8 step 1; chunk
+10's step 1). Nothing waits on Adam.
 
 ## The three assumptions I am least sure of
 
@@ -401,7 +418,8 @@ the plan decides (the decision's number in "Decided" where it has one); "O" = sc
   theme stays (a device preference). S22. The loading state before the session is known: Overload's spinner, through
   tokens; the prototype has no such state (a display-only lift, for the first app's vibe check).
 - S23. A crash screen (error boundary): not in SPEC, not built; noted in NEXT.md for the client-ready build.
-- S24. SPEC item 8 step 1 makes a client app's repo public: nothing here depends on it (see the end of "Questions").
+- S24. SPEC item 8 step 1 (amended 2026-11-06): public or private per app; the checklist page says what each means
+  (chunk 10); nothing in the build depends on the choice.
 - S25. SPEC item 7's RULES.md list omits "Pages for me" (chunk 10's rules) and "Standing rules": both lifted, in chunk
   0 (Decided 42). S26. Nothing marks the starter as a GitHub template repository, which checklist step 1 needs, and
   L31's branch-deletion setting is unaddressed: both are Adam's, one click each ("Questions", the to-dos).
@@ -418,7 +436,7 @@ the plan decides (the decision's number in "Decided" where it has one); "O" = sc
 - The Klienci list (kit example) needs Table, Badge, EmptyState, LoadError, ListRows, Toast, PageHeader, `format.ts`
   and the kit → chunks 4, 6, 8. The Klient form needs Panel, the three fields, ConfirmDialog, InlineError → 4, 6, 8.
   The design system page needs everything → chunk 8.
-- Every DEMO state has one owner chunk: Sign-in ×3, New app ×1, Settings ×1 → chunk 4; Klienci ×6, Klient form ×7,
+- Every DEMO state has one owner chunk: Sign-in ×4, New app ×1, Settings ×1 → chunk 4; Klienci ×6, Klient form ×7,
   Design system ×1 → chunk 8 (their components in 4 and 6).
 
 ---
@@ -464,7 +482,7 @@ design/0.1/prototype/*.png         the frozen prototype's reference screenshots 
 docs/new-app-checklist.md  docs/new-app-checklist.html (10);  docs/release-0.1.0-notes.md (release)
 .claude/agents/builder.md  reviewer-data.md  reviewer-light.md                                               (9)
 .claude/skills/stack/SKILL.md  .claude/skills/estimate/SKILL.md (7);  .claude/skills/prototype/SKILL.md     (8)
-SPEC.md  TASKS.md  CONTEXT.md (the planning commits);  RULES.md  DECISIONS.md  LEARNINGS.md  NEXT.md  HISTORY.md (0)
+SPEC.md  TASKS.md  CONTEXT.md  HISTORY.md (the planning commits);  RULES.md  DECISIONS.md  LEARNINGS.md  NEXT.md  (0)
 ```
 
 Until chunk 8 the committed `prototype/` is the zip as it is (its own `package.json`, `src/components`, `src/shell`,
@@ -527,7 +545,8 @@ sections, the four record files with their headers, and the size check that keep
   "Rules discovered during builds" and "Checks that lied" empty, with one line each saying chunk 9 fills nothing into
   them and the stack skill holds the lifted code rules.
 - `DECISIONS.md` (Overload's header: the entry format, "a record, not an inbox"), `LEARNINGS.md` (Overload's header:
-  the verdict rule), `NEXT.md` ("Planned, not built" first; empty), `HISTORY.md` (header).
+  the verdict rule), `NEXT.md` ("Planned, not built" first; empty); `HISTORY.md` exists since the planning session
+  (its first entry is that session's record): its header is checked against Overload's, nothing else.
 - `scripts/check-context-size.mjs` (Overload's; 75 KB).
 
 **Lifts (Overload):** `RULES.md` (lines 1–160), the headers of `DECISIONS.md`, `LEARNINGS.md`, `NEXT.md`, `HISTORY.md`,
@@ -568,8 +587,8 @@ colours from one config file and its version from `package.json`, and shows them
   (Overload's without `appEnv`), `src/lib/queryClient.ts` (Overload's defaults without the maintenance cache),
   `src/lib/version.ts` + `version.test.ts` (Overload's, whole), `src/lib/appConfig.ts` (new, reads `__APP_CONFIG__`),
   `src/lib/format.ts` (the prototype's, plus `formatDateTime` for the build line) + `format.test.ts` (new),
-  `src/i18n/pl.ts` (the prototype's words, word for word, with Decided 8, 9 and 19 applied: the example's sections
-  stay in `prototype/`) and its `Words` type,
+  `src/i18n/pl.ts` (the prototype's words, word for word, `signIn.offline` and `signIn.failed` included, with Decided
+  8, 9 and 19 applied: the example's sections stay in `prototype/`) and its `Words` type,
   `src/features/pwa/pwaRegister.ts` and `useServiceWorker.ts` (Overload's: the record, `onNeedReload` records only,
   the hourly and foreground checks, the bare-registration fallback; the update screen's readers dropped) with
   `useServiceWorker.test.tsx` (Overload's, minus the update-screen cases: the standing proof that `onNeedReload`
@@ -784,10 +803,12 @@ the account, the theme and the build line; the theme follows the device by defau
 - `src/features/auth/useAuth.tsx` (Overload's: the context, `getSession`, `onAuthStateChange` clearing the query cache
   on a user change; Dexie's wipe dropped) with Overload's `useAuth.signOut.test.tsx` (sign out first, then clear the
   cache; a user change clears it), `src/features/auth/authService.ts` (new: `signIn(email, password)` and `signOut()`
-  around `supabase.auth`; `signIn` throws on a resolved `{ error }` and on a network failure alike, Decided 7) with
-  `authService.test.ts` (both cases reject; a success resolves), `src/features/auth/LoginPage.tsx` (the prototype's
-  `SignIn.tsx` layout with Overload's submit flow: pending disables, the error is `t.signIn.wrong` whatever the
-  service threw, no sign-up control; the tile, the words from `pl.ts`).
+  around `supabase.auth`; `signIn` classifies a resolved `{ error }` or a thrown fetch failure as `wrong`, `offline`
+  or `failed` with the reason and throws it, Decided 7 and 24) with `authService.test.ts` (a bad-credentials
+  `{ error }` → `wrong`; a fetch `TypeError` and `navigator.onLine === false` → `offline`; any other `{ error }` →
+  `failed` with its message; a success resolves), `src/features/auth/LoginPage.tsx` (the prototype's `SignIn.tsx`
+  layout with Overload's submit flow: pending disables, the three lines of Decided 24, never the raw message alone,
+  no sign-up control; the tile, the words from `pl.ts`).
 - `src/features/settings/useTheme.ts` (Decided 23) and `SettingsPage.tsx` (the prototype's `Settings.tsx`: Account
   row with the e-mail and Wyloguj się, the theme radio group, the build line through `t.settings.buildLine`, Decided 8;
   Overload's `SettingsPage.tsx` ACCOUNT and APPEARANCE sections are the lifted behaviour: sign-out's pending state and
@@ -796,8 +817,9 @@ the account, the theme and the build line; the theme follows the device by defau
   `AppRoutes`, above everything that follows, Decided 45; the loading spinner through tokens, S22; signed out →
   `LoginPage` on every path; signed in → `AppShell` with the offline strip as its banner (`useOnlineStatus`) → routes
   from `tabs.ts`, `/` and `*` to the first tab; the theme applied above everything).
-- Tests (jsdom per file, Overload's docblock way): `LoginPage.test.tsx` (two different thrown messages both show
-  `t.signIn.wrong` and never the raw message; pending disables both fields and the button; no sign-up control exists),
+- Tests (jsdom per file, Overload's docblock way): `LoginPage.test.tsx` (a `wrong` shows `t.signIn.wrong`; an
+  `offline` shows `t.signIn.offline`; a `failed` with reason "x" shows `t.signIn.failed` and `Powód: x`; the raw
+  message never appears alone; pending disables both fields and the button; no sign-up control exists),
   `AppShell.test.tsx` (`data-layout` is `phone` at 899 and `desktop` at 900 through a stubbed `ResizeObserver` and
   `clientWidth`; the one tab renders; the lit tab carries `aria-current`), `useTheme.test.ts` (writes and reads the
   key; `system` removes `data-theme`; a storage that throws leaves `system` and does not crash),
@@ -811,22 +833,25 @@ the account, the theme and the build line; the theme follows the device by defau
 `src/App.test.tsx` (shape).
 **Lifts (prototype):** `src/components/ui.tsx`, `src/lib/useWide.tsx`, `src/shell/Shell.tsx`, `src/screens/SignIn.tsx`,
 `src/screens/Settings.tsx`.
-**Depends on:** chunk 1 (merged). **Prototype screens:** Sign-in (normal, wrong password, signing in); App frame, new
+**Depends on:** chunk 1 (merged). **Prototype screens:** Sign-in (normal, wrong password, offline, signing in); App
+frame, new
 app (signed in); Settings (normal); each at 390 and 1280 px, light and dark.
 
 **Verification**
-- The tests above, one break per call pattern: the error mapping (show the raw message → the test fails), the service
-  (return the `{ error }` instead of throwing → `authService.test.ts` fails and the sign-in test shows no line), the
+- The tests above, one break per call pattern: the error mapping (show the raw message alone → the test fails; map
+  `offline` to the wrong-password line → fails), the service (return the `{ error }` instead of throwing →
+  `authService.test.ts` fails and the sign-in test shows no line; classify a fetch failure as `wrong` → fails), the
   900 px switch (`WIDE_FROM` 901 → the 900 case fails), the sign-in page outside `WidthRoot` → the `[data-layout]`
   case fails, the theme write (skip the write → fails), the cache clear on sign-out (skip it → the lifted test fails),
   the route redirect.
 - `npm run typecheck`, `npm run build`, `node scripts/check-build.mjs`, `npm test`; chunk 5's three checks run on the
   merged tree at the batch review (a hit there is chunk 4's to fix in the rebase, not the check's).
-- **Would not catch:** a real Supabase sign-in (no project; the first app's checklist step 5 is the first real one);
-  layout at real widths (jsdom has no layout; chunk 8's kit check and the release comparison do); safe-area insets on a
-  real phone; the offline strip's timing on a real connection loss.
+- **Would not catch:** a real Supabase sign-in (no project; the first app's checklist step 5 is the first real one),
+  including the exact shape of supabase-js's error objects the classification reads (asserted on fixtures that copy
+  supabase-js's own classes); layout at real widths (jsdom has no layout; chunk 8's kit check and the release
+  comparison do); safe-area insets on a real phone; the offline strip's timing on a real connection loss.
 
-**Done when:** tests and build green, the seven breaks failed and were restored, and `chunk 4 complete` is pushed
+**Done when:** tests and build green, the nine breaks failed and were restored, and `chunk 4 complete` is pushed
 with its PR into `main`.
 
 ### Chunk 5 — The code checks: tokens, words, no database in screens, no prototype imports
@@ -986,7 +1011,7 @@ prototype's screenshots as the release reference, and documents itself.
 **Scope**
 - **First, the reference** (Decided 2): a `git worktree` of the first commit; in its `prototype/`, `npm ci`, the
   updated `check/clipping.mjs` (every state, both themes) and `bash check/run.sh`; the shots copied to
-  `design/0.1/prototype/` and committed (19 states × 2 widths × 2 themes = 76 PNG).
+  `design/0.1/prototype/` and committed (20 states × 2 widths × 2 themes = 80 PNG).
 - Then the kit: `prototype/vite.config.ts` (Overload's `fakeDataLayer` plugin: `REPO` resolved to its real path (L4),
   `SWAPS` = `lib/supabase.ts` → `fakes/supabase.ts` (the pending proxy), `features/auth/useAuth.tsx` →
   `fakes/useAuth.tsx`, `features/auth/authService.ts` → `fakes/authService.ts` (sign-in resolves, rejects or stays
@@ -997,9 +1022,9 @@ prototype's screenshots as the release reference, and documents itself.
   `prototype/src/main.tsx` (seed, then render), `prototype/src/App.tsx` (the DEMO button and menu around the real
   `AppRoutes` under `MemoryRouter`; no second `WidthRoot`, `AppRoutes` carries its own (Decided 45); the phone frame =
   the zip's App frame around it; the example screens mounted as extra routes the DEMO menu reaches),
-  `demo/DemoMenu.tsx` and `demo/demoStore.ts` (the zip's, Overload's lifted: the 19 states, THEME, WIDTH → PHONE
-  FRAME, the "New app: what you get" state, the example labels; **each state carries an `expect`**, a text or a
-  selector, Decided 46: the error line, nine rows, the empty line, six skeleton rows, the reason line, the offline
+  `demo/DemoMenu.tsx` and `demo/demoStore.ts` (the zip's as amended on 2026-11-06, Overload's lifted: the 20 states,
+  THEME, WIDTH → PHONE FRAME, the "New app: what you get" state, the example labels; **each state carries an
+  `expect`**, a text or a selector, Decided 46: the wrong-password line, the offline line, nine rows, the empty line, six skeleton rows, the reason line, the offline
   strip, the toast, the form's title, the field error, the saving word, the failed line, the needs-connection line,
   the dialog's title, one tab, the theme radio, the design page's heading),
   `demo/seed.ts` (the Klienci fixture into the real query cache under the example hook's key; `retry: false`),
@@ -1007,7 +1032,8 @@ prototype's screenshots as the release reference, and documents itself.
   subscribing to the cache (Decided 34), `clientsService.fake.ts` whose save resolves, rejects or stays pending by the
   DEMO state, `fixtures.ts`), `examples/words.ts` (Decided 19), `screens/DesignSystem.tsx` (the zip's, rewired),
   `check/run.sh` and `check/clipping.mjs` (the zip's; every state screenshotted in both themes; each state's `expect`
-  asserted after it is applied; the two sign-in states driven by filling the fields and submitting; a PHONE FRAME
+  asserted after it is applied; the three sign-in states (wrong password, offline, signing in) driven by filling
+  the fields and submitting; a PHONE FRAME
   pass at the 1280 px viewport with WIDTH → PHONE FRAME on, asserting for the panel, dialog and toast states that the
   overlay's box lies inside the frame's box; `findClipped` moved into `check/clipped.mjs` as a module), `README.md`
   (Overload's, rewritten for the starter: how it works, the commands from the root, "publish only after a clean run and
@@ -1029,11 +1055,11 @@ not its hand-built shell, Decided 3), `prototype/src/demo/seed.ts`
 **Lifts (prototype, the zip):** everything under `prototype/` as committed: `src/demo/*`, `src/screens/Clients.tsx`,
 `src/screens/ClientForm.tsx`, `src/screens/DesignSystem.tsx`, `src/App.tsx` (the phone frame), `check/*`, `inline.mjs`.
 **Depends on:** chunk 6 merged (Panel, Table, Toast, EmptyState, LoadError, ListRows), chunk 4. **Prototype screens:**
-all 19 DEMO states (the kit must show every one, both widths, both themes).
+all 20 DEMO states (the kit must show every one, both widths, both themes).
 
 **Verification**
 - `npm run proto:check` exits 0: no page errors, no clipping at 390 and 1280 px in light and dark, every state's
-  `expect` met, the PHONE FRAME pass green, 76 screenshots in `prototype/check/shots/`, the DEMO menu lists 19
+  `expect` met, the PHONE FRAME pass green, 80 screenshots in `prototype/check/shots/`, the DEMO menu lists 20
   states and every entry has an `expect` (both asserted in `clipping.mjs`'s output).
 - `scripts/check-screens-no-db.test.mjs` (chunk 5) on `src/` still zero (the kit imports from `src/`, never the
   reverse); a new node test `prototype/check/kit.test.mjs`: `prototype/src` holds no copy of a `src/components`,
@@ -1042,7 +1068,7 @@ all 19 DEMO states (the kit must show every one, both widths, both themes).
   error the check reports, proving the swap is load-bearing; remove the cache subscription in `useClients` → the
   Full state's `expect` (nine rows) fails; blank one state's `expect` → the kit test fails; move the transform off the
   overlay root in a scratch copy → the PHONE FRAME pass fails on the panel's box.
-- The reference set exists: 76 files in `design/0.1/prototype/`, taken from the first commit's prototype (the commit
+- The reference set exists: 80 files in `design/0.1/prototype/`, taken from the planning commits' prototype (the commit
   id in the report).
 - **Would not catch:** differences from the published page "Starter Prototype" (Adam's reference; the committed source
   is this plan's); behaviour the fakes cannot show (a real sign-in); drift between the real app and the kit outside
@@ -1108,14 +1134,17 @@ merges last).
 
 **Scope**
 - `docs/new-app-checklist.md` (the record, in the shape of Overload's `docs/release-1.2.1-run-sheet.md`: the folder
-  to run from and timing at the top; per step the cmd commands, Expect, Stop if): (1) GitHub: a new public repo from
-  the starter template, cloned; (2) Supabase: a new project in the app's organization, EU region (it cannot be moved
+  to run from and timing at the top; per step the cmd commands, Expect, Stop if): (1) GitHub: a new repo from the
+  starter template, public or private chosen per app, cloned; the page says what each means (SPEC item 8 step 1 as
+  amended 2026-11-06, word for word): GitHub's required checks on a private repo need a paid GitHub plan (about $4 a
+  month); a public repo shows the app's code, never its data, to anyone; the demo's spec decides its repo; (2) Supabase: a new project in the app's organization, EU region (it cannot be moved
   later), sign-ups off in the dashboard with e-mail sign-in left on, the first user added; Expect: the project's
   `/auth/v1/settings` (a `curl` with the anon key) shows `"disable_signup":true` and `"external":{"email":true…}`
   (Decided 15); (3) the Supabase → GitHub link on the default branch, so migrations deploy by themselves; Expect: the
   link shows `main` and "migrations"; (4) Vercel: a new project from the repo with `VITE_SUPABASE_URL` and
   `VITE_SUPABASE_ANON_KEY`; Expect: a Ready deploy; (5) the app opens on its Vercel address and the first account signs
-  in; Stop if: the sign-in page says the one error line. Step 1's Expect box says the starter shows "Use this
+  in; Stop if: the sign-in page shows the wrong-password line or the failed line with its reason. Step 1's Expect box
+  says the starter shows "Use this
   template" (the template flag, Adam's to-do) and the new repo has "Automatically delete head branches" on. After
   step 5, the hand-off to agents: the project's Postgres version into `supabase/postgres-image`, `app.config.ts`
   filled, `design/0.1/` kept as the design reference until the app's first prototype replaces it (Decided 30), the
@@ -1157,7 +1186,7 @@ the five steps with the hand-off, and `chunk 10 complete` is pushed with its PR 
 One reviewer agent (reviewer-light's definition, Sonnet high) and the coordinator; counted as one LIGHT in the
 estimate.
 1. **Screens against the prototype, by screenshot:** `npm run proto:check` on `main` (the kit renders the real screens)
-   → `prototype/check/shots/` (76) against `design/0.1/prototype/` (76), side by side, every state, 390 and 1280 px,
+   → `prototype/check/shots/` (80) against `design/0.1/prototype/` (80), side by side, every state, 390 and 1280 px,
    light and dark; each difference listed with its state and whether SPEC or the prototype decides it. The shots of
    the built screens go to `design/0.1/built/`.
 2. **Every script:** `node --test "scripts/*.test.mjs"`, `npm run typecheck`, `npm run build`,
@@ -1168,9 +1197,10 @@ estimate.
 3. Tests owed cleared in one tests-only run, then one full `npm test`.
 4. `docs/release-0.1.0-notes.md`: what the starter holds (the eight items of SPEC), what is not in this version, the
    facts verified and how each came out. HISTORY.md gets the build's record; NEXT.md its leftovers.
-5. **The tag `v0.1.0`** with the notes (Q2 decides who pushes it); the GitHub Release if the API allows it. Before
-   the first app: the two repository settings that are Adam's to-dos ("Questions": the template flag, the branch
-   deletion).
+5. **The tag `v0.1.0`** with the notes. Adam's answer to Q2 (2026-11-06): setup tries one throwaway tag; if it
+   lands, the coordinator pushes `v0.1.0` (and the GitHub Release if the API allows it); if not, Adam runs
+   `git tag v0.1.0` and `git push origin v0.1.0` from the release note. The two repository settings (the template
+   flag, head-branch deletion) are done (2026-11-06).
 6. The close (BUILD.md step 6) is Adam's and the next session's: LEARNINGS verdicts, the cost table's third
    calibration, the retro.
 
@@ -1218,8 +1248,8 @@ estimate.
    Docker Hub answers 429; checked here at 15:25: the mirror is reachable through the proxy and served PostgREST's
    manifest and an alpine image, but did not hold `supabase/postgres:17.6.1.155` at that moment. **So:** the replay
    family runs in GitHub Actions on every PR regardless; in a cloud session it runs whenever the mirror holds the tag
-   or the shared hour's quota has room, and always with a Docker Hub token (Q1). The builder and reviewer definitions
-   say so (chunk 9; Decided 27).
+   or the shared hour's quota has room, and always with a Docker Hub token: Adam's answer to Q1 put one on the Starter
+   environment (Decided 27). The builder and reviewer definitions say so (chunk 9).
 3. **Where sign-ups are switched off on a hosted project.** *Checked against the docs source* (`supabase.com` is
    outside this session's network; read from `raw.githubusercontent.com/supabase/supabase/master/apps/docs/content/
    guides/deployment/branching/github-integration.mdx` and `…/configuration.mdx`): on a production deploy "new
@@ -1284,6 +1314,10 @@ estimate.
 - **Cards and limits.** A decision card for anything SPEC leaves open or a prototype state that contradicts SPEC; a
   push notification for every card and limit stop; the hourly scheduled task that resumes the build after a limit;
   full speed always.
+- **The environment.** The build's cloud sessions run in Adam's personal cloud environment **Starter** (made
+  2026-11-06, Q1's answer): a read-only Docker Hub token saved as a network secret for `auth.docker.io`; agents try
+  `mirror.gcr.io` first, Docker Hub second; the coordinator is started in it and starts every agent from it. The
+  planning session ran in the Default environment.
 - **The Overload clone.** Read-only, at `../overload-v2`, `git checkout 8e00877`; never pushed to; every lift names
   its file in the chunk's commit message.
 

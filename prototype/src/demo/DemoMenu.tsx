@@ -17,6 +17,7 @@ const ENTRIES: Entry[] = [
     states: [
       { label: 'Normal', apply: (s) => s({ ...base, screen: 'signIn' }) },
       { label: 'Wrong password', apply: (s) => s({ ...base, screen: 'signIn', signIn: 'wrong' }) },
+      { label: 'Offline', apply: (s) => s({ ...base, screen: 'signIn', signIn: 'offline' }) },
       { label: 'Signing in', apply: (s) => s({ ...base, screen: 'signIn', signIn: 'pending' }) },
     ],
   },

@@ -218,7 +218,10 @@ How a new app gets its accounts, as a **checklist page** (BUILD.md, "Procedures 
 with copy buttons, an Expect box and a "Stop if" box per step, progress saved where Claude can read it. Its markdown
 record lives in the starter's `docs/`. Steps:
 
-1. GitHub: new **public** repo from the starter template.
+1. GitHub: new repo from the starter template, **public or private, chosen per app**. The page says what each
+   means: GitHub's required checks on a private repo need a paid GitHub plan (about $4 a month); a public repo shows the
+   app's code, never its data, to anyone. (Amended 2026-11-06: the demo and client apps carry the product core, Adam's
+   main business asset; the demo's spec decides its repo.)
 2. Supabase: new project, **EU region** (it can't be moved later), in the organization the app belongs to; sign-ups off
    (and e-mail sign-in left on); the first user account added.
 3. Supabase → GitHub link, so migrations deploy from the default branch by themselves.
@@ -243,7 +246,10 @@ Every screen is in the prototype; open DEMO for its states. Words here only for 
 | Klient form | No: kit example | new, edit, missing fields, saving, save failed, offline, delete | New starts with empty fields |
 | Design system page | No: prototype only | one page | — |
 
-- **Sign-in:** no "create an account". The error is the one line from the words file, whatever Supabase's message.
+- **Sign-in:** no "create an account". Wrong e-mail or password shows `signIn.wrong`; no connection shows
+  `signIn.offline` ("Brak połączenia. Spróbuj ponownie, gdy wróci."); any other failure shows `signIn.failed` with the
+  reason, as Overload's sign-in does. Never Supabase's raw message alone. (Amended 2026-11-06: the first wording would
+  have told an offline user their password was wrong.)
 - **Settings:** the build line (version · build hash · build time) stays at the bottom, as in Overload.
 - **The words** on these screens are in `prototype/src/i18n/pl.ts`, word for word. The starter has no forbidden words yet.
 

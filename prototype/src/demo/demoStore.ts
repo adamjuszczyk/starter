@@ -7,7 +7,7 @@ import { create } from 'zustand'
 export type Screen = 'signIn' | 'clients' | 'settings' | 'system'
 export type ListState = 'full' | 'empty' | 'loading' | 'error'
 export type FormState = 'idle' | 'invalid' | 'saving' | 'failed'
-export type SignInState = 'idle' | 'wrong' | 'pending'
+export type SignInState = 'idle' | 'wrong' | 'offline' | 'pending'
 export type Theme = 'system' | 'light' | 'dark'
 export type Frame = 'fill' | 'phone'
 

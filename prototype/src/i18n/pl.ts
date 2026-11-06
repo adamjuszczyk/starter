@@ -21,6 +21,8 @@ export const pl = {
     submit: 'Zaloguj się',
     pending: 'Logowanie…',
     wrong: 'Nieprawidłowy e-mail lub hasło.',
+    offline: 'Brak połączenia. Spróbuj ponownie, gdy wróci.',
+    failed: 'Nie udało się zalogować.',
   },
   common: {
     cancel: 'Anuluj',

@@ -7,6 +7,8 @@ import type { SignInState } from '../demo/demoStore'
 // one button, the error under the fields, the button busy while it signs in.
 // Dropped: Overload's "create an account" switch. Sign-ups are off in the
 // starter: accounts are added by the app's owner (decided 2026-11-06).
+// Amended 2026-11-06 (SPEC, Screens): no connection shows signIn.offline, any
+// other failure signIn.failed with the reason; never Supabase's raw message alone.
 
 export function SignInScreen({ state, onSubmit }: { state: SignInState; onSubmit: () => void }) {
   const wide = useWide()
@@ -24,6 +26,7 @@ export function SignInScreen({ state, onSubmit }: { state: SignInState; onSubmit
           <TextField id="email" label={t.signIn.email} type="email" autoComplete="email" defaultValue="anna@firma.pl" disabled={pending} />
           <TextField id="password" label={t.signIn.password} type="password" autoComplete="current-password" defaultValue="haslo-przyklad" disabled={pending} />
           {state === 'wrong' && <InlineError text={t.signIn.wrong} />}
+          {state === 'offline' && <InlineError text={t.signIn.offline} />}
           <Button variant="primary" type="submit" disabled={pending} className="w-full">{pending ? t.signIn.pending : t.signIn.submit}</Button>
         </form>
       </div>
