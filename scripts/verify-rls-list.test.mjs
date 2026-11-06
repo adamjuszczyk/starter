@@ -52,11 +52,11 @@ const DYNAMIC_FROM = /(?<!Array|Buffer)\.from\(\s*([A-Za-z_$][\w$.]*)\s*\)/g;
 // after a space, a comma, a colon (an alias) or an opening parenthesis.
 const EMBED = /(?:^|[\s,(:])([A-Za-z0-9_]+)\s*(?:!\s*[A-Za-z0-9_]+\s*)?\(/g;
 
-export const literalFroms = (text) => [...text.matchAll(LITERAL_FROM)].map((m) => m[2]);
-export const dynamicFroms = (text) => [...text.matchAll(DYNAMIC_FROM)].map((m) => m[1]);
+const literalFroms = (text) => [...text.matchAll(LITERAL_FROM)].map((m) => m[2]);
+const dynamicFroms = (text) => [...text.matchAll(DYNAMIC_FROM)].map((m) => m[1]);
 
 // Every embedded table name in the string literals of one source file, read from its syntax tree.
-export function embedsIn(fileName, text) {
+function embedsIn(fileName, text) {
   const found = [];
   const sf = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, false);
   const visit = (node) => {
@@ -70,14 +70,14 @@ export function embedsIn(fileName, text) {
 }
 
 // A test or a test utility is never an app file: a stand-in that names a table is not a use.
-export const isAppFile = (rel) => !/\.(test|testutil)\.|(^|[\\/])testing[\\/]/.test(rel);
+const isAppFile = (rel) => !/\.(test|testutil)\.|(^|[\\/])testing[\\/]/.test(rel);
 
 // The tables and views a migration creates in the public schema (comments dropped first, so one that mentions
 // `create table` does not count). Not temporary ones, and not another schema's (`create table auth.x`). An unquoted
 // name is folded to lower case, as Postgres does.
 const CREATE_RELATION =
   /\bcreate\s+(?:or\s+replace\s+)?(?:unlogged\s+)?(?:materialized\s+|recursive\s+)?(?:table|view)\s+(?:if\s+not\s+exists\s+)?(?:"?public"?\s*\.\s*)?(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*)\b)(?!\s*\.)/gi;
-export function createdRelations(sql) {
+function createdRelations(sql) {
   const code = sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\n]*/g, '');
   return [...code.matchAll(CREATE_RELATION)].map((m) => m[1] ?? m[2].toLowerCase());
 }
@@ -88,7 +88,7 @@ const add = (map, key, value) => map.set(key, (map.get(key) ?? new Set()).add(va
 
 // access: parseAccess's entries; sources and migrations: [{ rel, text }]. Returns the problems, each tagged with the
 // rule it breaks and phrased as what to do, plus what the scan found.
-export function checkList({ access, sources, migrations, knownDynamic = [] }) {
+function checkList({ access, sources, migrations, knownDynamic = [] }) {
   const keys = new Map(access.map((entry) => [entry.table, entry]));
   const literal = new Map(); // table -> files with a literal .from() naming it (every source file, tests included)
   const embedded = new Map(); // table -> app files whose select strings embed it
@@ -201,15 +201,20 @@ test('the access lists are well formed: the app\'s and the fixture\'s', () => {
   assert.doesNotThrow(() => readAccess(join(root, 'scripts', 'verify-rls-fixture', 'access.json')));
 });
 
-test('the fixture: three tables, one per kind, and its migration creates exactly those', () => {
-  const access = readAccess(join(root, 'scripts', 'verify-rls-fixture', 'access.json'));
-  assert.deepEqual(access.map((e) => `${e.table}:${e.kind}`), ['fx_own:own', 'fx_shared:signed-in', 'fx_public:public']);
-  const migrations = readMigrations(join(root, 'scripts', 'verify-rls-fixture', 'migrations'));
-  assert.ok(migrations.length > 0, 'the fixture has no migration');
+const fixtureAccess = readAccess(join(root, 'scripts', 'verify-rls-fixture', 'access.json'));
+const fixtureMigrations = readMigrations(join(root, 'scripts', 'verify-rls-fixture', 'migrations'));
+
+test('the fixture: every key is created by its migration and every table it creates has a key', () => {
+  assert.ok(fixtureMigrations.length > 0, 'the fixture has no migration');
   // No src/ here: only the migration side of the check applies (the keys are "unused" because nothing reads them).
-  const fixture = checkList({ access, sources: [], migrations });
+  const fixture = checkList({ access: fixtureAccess, sources: [], migrations: fixtureMigrations });
   assert.deepEqual(messages(fixture, 'created-without-key', 'key-not-created'), []);
-  assert.deepEqual([...fixture.created.keys()].sort(), ['fx_own', 'fx_public', 'fx_shared']);
+});
+
+test('the fixture: three tables, one per kind', () => {
+  assert.deepEqual(fixtureAccess.map((e) => `${e.table}:${e.kind}`), ['fx_own:own', 'fx_shared:signed-in', 'fx_public:public']);
+  const created = checkList({ access: fixtureAccess, sources: [], migrations: fixtureMigrations }).created;
+  assert.deepEqual([...created.keys()].sort(), ['fx_own', 'fx_public', 'fx_shared']);
 });
 
 // ---- the scanners prove themselves on fixture sources (S3) ------------------------------------------------------

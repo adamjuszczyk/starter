@@ -55,7 +55,7 @@ jobs:
         run: bash scripts/check-embeds-local.sh
 
       # verify-rls.mjs imports @supabase/supabase-js, so the next two steps need
-      # node_modules (package-lock.json comes with chunk 1's scaffold).
+      # node_modules.
       - name: Install dependencies (npm ci)
         run: npm ci
 

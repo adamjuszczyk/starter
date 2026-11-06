@@ -117,8 +117,10 @@ test('"could not ask" is never a refusal: any other error is a FAIL for every pr
   assert.match(noColumn.detail, /\[42703\]/);
 });
 
-test('an unknown probe is a FAIL, not a pass', () => {
+test('an unknown probe is a FAIL, not a pass, whatever it was answered', () => {
   assert.equal(classifyProbe({ probe: 'nope', count: 1 }).status, 'FAIL');
+  assert.equal(classifyProbe({ probe: 'nope', count: 0 }).status, 'FAIL');
+  assert.equal(classifyProbe({ probe: 'nope', error: permissionDenied }).status, 'FAIL');
 });
 
 test('what each kind is asked, and as whom', () => {
@@ -566,6 +568,7 @@ test('run: bad arguments, an unreadable list or catalog, a bad list and no secre
     [['--local', 'http://x'], env],
     [['--local', 'http://x', '--catalog', catalog, '--bogus'], env],
     [['--local', 'http://x', '--catalog', catalog, '--fixture', '--access', list], env],
+    [['--local', 'not-a-url', '--catalog', catalog, '--access', list], env],
     [['--local', 'http://x', '--catalog', join(dir, 'missing.json'), '--access', list], env],
     [['--local', 'http://x', '--catalog', catalog, '--access', join(dir, 'missing.json')], env],
     [['--local', 'http://x', '--catalog', catalog, '--access', ok('bad.json', '{"t": "mine"}')], env],
@@ -576,12 +579,78 @@ test('run: bad arguments, an unreadable list or catalog, a bad list and no secre
   for (const [argv, e] of cases) assert.equal(await run(argv, e, quiet), 2, argv.join(' '));
 });
 
-test('the script itself: no arguments is exit 2 with the usage line', async () => {
-  const result = await new Promise((resolve) => {
-    execFile(process.execPath, [SCRIPT], { encoding: 'utf8' }, (err, stdout, stderr) => {
+// Runs a program in `cwd` and answers { code, out } (stdout and stderr together).
+const exec = (program, args, cwd) =>
+  new Promise((resolve) => {
+    execFile(program, args, { encoding: 'utf8', cwd }, (err, stdout, stderr) => {
       resolve({ code: err ? err.code : 0, out: String(stdout) + String(stderr) });
     });
   });
+
+test('the script itself: no arguments is exit 2 with the usage line', async () => {
+  const result = await exec(process.execPath, [SCRIPT]);
   assert.equal(result.code, 2);
   assert.match(result.out, /usage: node scripts\/verify-rls\.mjs/);
+});
+
+// ---- the wrapper and the workflow --------------------------------------------------------------------------------
+// scripts/verify-rls-replay.sh needs Docker, so what can be tested without it is: the refusals before Docker, and
+// its text (a tripwire, as check-embeds.test.mjs does for check-embeds-local.sh). The behaviour was proven on the
+// real replay: the fixture's ten checks pass, and each break proof in TASKS.md (chunk 3) fails the right probe.
+
+const text = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
+const codeOf = (path) => text(path).split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+
+test('verify-rls-replay.sh refuses an argument it does not know, and a missing node_modules, with exit 2 before any Docker', async () => {
+  const wrapper = new URL('./verify-rls-replay.sh', import.meta.url).pathname;
+  const bad = await exec('bash', [wrapper, '--bogus']);
+  assert.equal(bad.code, 2);
+  assert.match(bad.out, /usage: bash scripts\/verify-rls-replay\.sh \[--fixture\]/);
+  const empty = mkdtempSync(join(tmpdir(), 'verify-rls-'));
+  const noModules = await exec('bash', [wrapper], empty);
+  assert.equal(noModules.code, 2);
+  assert.match(noModules.out, /node_modules\/@supabase\/supabase-js is missing: run npm ci first/);
+});
+
+test('verify-rls-replay.sh runs PostgREST as a hosted project does: connecting as authenticator, the signed-out caller the real anon', () => {
+  const code = codeOf('./verify-rls-replay.sh');
+  assert.match(code, /PGRST_DB_URI="postgres:\/\/authenticator:/);
+  assert.doesNotMatch(code, /postgres:\/\/postgres:/, 'connecting as postgres loads no safeupdate');
+  assert.match(code, /-e PGRST_DB_ANON_ROLE=anon\b/);
+  assert.doesNotMatch(code, /PGRST_DB_ANON_ROLE=postgres\b/, 'check-embeds-local.sh probes as postgres; this one must not');
+  assert.match(code, /-e PGRST_DB_SCHEMAS=public\b/);
+  assert.match(code, /alter role authenticator with password/);
+  assert.match(code, /postgrest\/postgrest:v12\.2\.3/);
+});
+
+test('verify-rls-replay.sh proves the session is authenticator\'s before it probes, and removes both containers', () => {
+  const code = codeOf('./verify-rls-replay.sh');
+  const at = (needle) => code.indexOf(needle);
+  assert.ok(at('bash scripts/replay-migrations.sh --keep') >= 0);
+  assert.ok(at('alter role authenticator') > at('replay-migrations.sh'), 'the password is set on the replayed database');
+  assert.ok(at('pg_stat_activity') > at('docker run -d'), 'the sessions are read once PostgREST is up');
+  assert.ok(at('delete from pg_catalog.pg_database') > at('pg_stat_activity'));
+  assert.ok(at('node scripts/verify-rls.mjs') > at('delete from pg_catalog.pg_database'), 'the probes come after the proof');
+  assert.match(code, /--catalog "\$tmp\/catalog\.json"/);
+  assert.match(code, /docker rm -f "\$api" "\$db"/);
+  assert.match(code, /trap cleanup EXIT/);
+});
+
+test('replay-migrations.sh --fixture replays the fixture after the app\'s migrations, the seed last', () => {
+  const code = codeOf('./replay-migrations.sh');
+  assert.match(code, /--fixture\) fixture=1; shift ;;/);
+  assert.ok(code.indexOf('for f in "${fixture_files[@]}"') > code.indexOf('for f in "${files[@]}"'));
+  assert.match(code, /fixture_files\+=\(seed\.sql\)/);
+  assert.match(code, /FIXTURE_DIR="scripts\/verify-rls-fixture"/);
+});
+
+test('the migration-replay workflow runs the sign-ups check, then the self-test and the app\'s list once npm ci has run', () => {
+  const runs = [...text('../.github/workflows/migration-replay.yml').matchAll(/^\s+run: (.+)$/gm)].map((m) => m[1].trim());
+  const step = (command) => {
+    assert.ok(runs.includes(command), `the workflow has no step \`${command}\``);
+    return runs.indexOf(command);
+  };
+  assert.ok(step('node scripts/check-signups.mjs') >= 0);
+  assert.ok(step('npm ci') < step('bash scripts/verify-rls-replay.sh --fixture'));
+  assert.ok(step('bash scripts/verify-rls-replay.sh --fixture') < step('bash scripts/verify-rls-replay.sh'));
 });

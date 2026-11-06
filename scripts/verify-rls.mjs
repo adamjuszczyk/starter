@@ -97,8 +97,11 @@ export function classifyProbe({ probe, count, foreign, total, error }) {
       case 'public':
         return { status: 'FAIL', detail: 'permission denied (42501) where rows are expected: a missing grant, not RLS' };
       // The caller must not read these rows: a refusal is RLS or a grant doing its job.
-      default:
+      case 'foreign':
+      case 'signed-out':
         return { status: 'PASS', detail: 'permission denied (42501)' };
+      default:
+        return { status: 'FAIL', detail: `unknown probe ${probe}` };
     }
   }
   const missing = (n) => n === null || n === undefined || !Number.isInteger(n);
@@ -307,6 +310,7 @@ export async function run(argv, env, { out = console.log, err = console.error, c
   let args, entries, catalog, secret;
   try {
     args = parseArgs(argv);
+    if (!/^https?:\/\/[^/\s]+/.test(args.local)) throw new Error(`--local ${args.local} is not an http(s) URL`);
     const accessPath = args.fixture ? FIXTURE_ACCESS_FILE : (args.access ?? ACCESS_FILE);
     entries = parseAccess(readJson(accessPath, 'the access list'));
     catalog = readJson(args.catalog, 'the catalog');
