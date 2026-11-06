@@ -93,10 +93,7 @@ trap cleanup EXIT
 
 echo "replay-migrations: image $IMAGE"
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-  docker pull --quiet "$IMAGE" >/dev/null || {
-    echo "replay-migrations: couldn't pull $IMAGE. In a cloud session: docker pull mirror.gcr.io/$IMAGE, then docker tag it to $IMAGE." >&2
-    exit 2
-  }
+  docker pull --quiet "$IMAGE" >/dev/null || { echo "replay-migrations: couldn't pull $IMAGE." >&2; exit 2; }
 fi
 docker run -d --name "$name" -e POSTGRES_PASSWORD=postgres "$IMAGE" >/dev/null \
   || { echo "replay-migrations: couldn't start the container." >&2; exit 2; }

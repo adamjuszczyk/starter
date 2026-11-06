@@ -24,10 +24,7 @@ ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}
 docker run -d --name "$api" \
   -e PGRST_DB_URI="postgres://postgres:postgres@$ip:5432/postgres" \
   -e PGRST_DB_SCHEMAS=public -e PGRST_DB_ANON_ROLE=anon \
-  "$POSTGREST_IMAGE" >/dev/null || {
-    echo "check-embeds-local: couldn't start PostgREST. In a cloud session: docker pull mirror.gcr.io/$POSTGREST_IMAGE, then docker tag it to $POSTGREST_IMAGE." >&2
-    exit 2
-  }
+  "$POSTGREST_IMAGE" >/dev/null || { echo "check-embeds-local: couldn't start PostgREST." >&2; exit 2; }
 apiip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$api")
 for _ in $(seq 1 30); do curl -sf "http://$apiip:3000/" >/dev/null 2>&1 && break; sleep 1; done
 curl -sf "http://$apiip:3000/" >/dev/null 2>&1 || { docker logs "$api" 2>&1 | tail -5; echo "check-embeds-local: PostgREST didn't come up." >&2; exit 2; }

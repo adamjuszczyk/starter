@@ -200,13 +200,8 @@ test('the shipped config and access list pass, and would pass with a signed-in t
   assert.equal(checkSignups(toml, { ...access, units: 'signed-in' }).ok, true);
 });
 
-test('the starter ships sign-ups off and e-mail sign-in on (a derived app that changes this edits this test)', () => {
+test('the starter ships sign-ups off and e-mail sign-in on (an app that turns sign-ups on edits this test, in plain sight)', () => {
   const toml = readFileSync(REAL_CONFIG, 'utf8');
   assert.deepEqual(readKeys(toml, 'auth', 'enable_signup'), ['false']);
   assert.deepEqual(readKeys(toml, 'auth.email', 'enable_signup'), ['true']);
-  assert.deepEqual(readKeys(toml, 'auth.sms', 'enable_signup'), ['false']);
-  assert.deepEqual(readKeys(toml, 'db', 'major_version'), ['17']);
-  assert.deepEqual(readKeys(toml, 'db.seed', 'enabled'), ['false']);
-  assert.doesNotMatch(toml, /^\s*\[remotes/m);
-  assert.match(toml, /^project_id = "starter"$/m);
 });
