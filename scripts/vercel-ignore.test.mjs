@@ -255,7 +255,7 @@ test('the .md exclude still holds beside the prototype, docs and .claude ones, i
   try {
     const deployed = r.commit('app.ts', 'v1');
     r.commit('prototype/README.md', 'prototype doc');
-    r.commit('docs/notes.md', 'doc');
+    r.commit('notes/notes.md', 'doc'); // under no excluded folder: only the *.md exclude skips it
     r.commit('.claude/agents/builder.md', 'agent');
     r.commit('prototype/src/App.tsx', 'prototype code');
     r.commit('docs/page.html', 'page');

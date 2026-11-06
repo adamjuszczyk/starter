@@ -1,10 +1,15 @@
 @import '@fontsource-variable/archivo';
 @import '@fontsource-variable/jetbrains-mono';
-@import "tailwindcss";
+@import "tailwindcss" source("..");
 
 /* ─── Lifted from Overload's src/styles/global.css ────────────────────────────
    Same mapping of tokens.css onto Tailwind utilities (bg-surface, text-ink,
    border-wire, ...), same three font roles.
+   Tailwind looks for class names in src/ only (`source("..")` is relative to
+   this file). The app's Vite root is the repo root, where its automatic scan
+   also reads prototype/ and the docs: the build then carried about 216
+   utility classes the app never uses, twice the CSS, and a CSS file that
+   changed whenever a markdown file mentioned a class name.
    New for the starter: Tailwind's own colours, text sizes and radii are
    switched off (`initial`), so the only named classes are the tokens
    (Tailwind's bg-red-500 doesn't exist). A typed-in value such as

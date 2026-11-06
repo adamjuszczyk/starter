@@ -2,8 +2,9 @@
 //
 // Checks the built app in dist/ for what lets it open offline and keeps a new version from leaving a half-updated page (TASKS.md,
 // Decided 4 and 16). A build can pass and still have lost any of these, and nothing else would notice:
-//   1. sw.js takes over by itself: it calls self.skipWaiting() and clientsClaim(), and the workbox runtime it loads claims clients on
-//      activate (vite.config.ts sets both; without them a new worker waits until every tab of the app is closed).
+//   1. sw.js takes over by itself: it calls self.skipWaiting() as it loads (not only when a page sends it a SKIP_WAITING message) and
+//      clientsClaim(), and the workbox runtime it loads claims clients on activate (vite.config.ts sets both; without them a new worker
+//      waits until every tab of the app is closed).
 //   2. Every woff2 file in dist is in the precache (sw.js's manifest), and each bundled font family (the @fontsource packages in
 //      package.json) has one there, its latin-ext file (the Polish letters) among them: the app opens offline with its fonts.
 //   3. No Google font host anywhere in dist: loading fonts from Google sends every visitor's address to Google.
@@ -45,7 +46,19 @@ const check = (name, ok, whenFailed) => results.push({ name, ok, whenFailed });
 const sw = read('sw.js');
 const runtimeFile = sw.match(/["']\.\/(workbox-[\w.-]+)["']/)?.[1];
 const runtime = runtimeFile && all.includes(`${runtimeFile}.js`) ? read(`${runtimeFile}.js`) : '';
-check('sw.js calls self.skipWaiting()', /self\.skipWaiting\(\)/.test(sw), 'workbox.skipWaiting is not set in vite.config.ts: a new worker would wait until every tab is closed');
+// With workbox.skipWaiting off, workbox-build writes a listener instead: `message` events of type SKIP_WAITING call self.skipWaiting()
+// from the page, which nothing in the app sends. The text `self.skipWaiting()` is in sw.js either way, so the call must be a statement
+// of its own at the top of the worker (after `;`, `,` or `{`, before `,` or `;`), and the listener must not be there.
+check(
+  'sw.js calls self.skipWaiting() as it loads',
+  /(^|[;,{}])\s*self\.skipWaiting\(\)\s*[,;]/.test(sw),
+  'workbox.skipWaiting is not set in vite.config.ts: a new worker would wait until every tab is closed',
+);
+check(
+  'sw.js has no SKIP_WAITING message listener',
+  !/SKIP_WAITING/.test(sw),
+  'sw.js waits for a SKIP_WAITING message from the page, which nothing in the app sends (workbox.skipWaiting is not set in vite.config.ts)',
+);
 check('sw.js calls clientsClaim()', /\bclientsClaim\(\)/.test(sw), 'workbox.clientsClaim is not set in vite.config.ts: a new worker would not control the open tab');
 check('the workbox runtime sw.js loads claims clients (clients.claim)', /clients\.claim\(\)/.test(runtime), `no clients.claim() in ${runtimeFile ?? 'a workbox runtime'}, which sw.js should load`);
 
@@ -86,7 +99,7 @@ const extraChunks = dynamicImports.filter(({ specifier }) => !basename(specifier
 check(
   'no dynamic chunk but workbox-window',
   extraChunks.length === 0,
-  `import("${extraChunks[0]?.specifier}") in ${extraChunks[0]?.file}${extraChunks.length > 1 ? ` and ${extraChunks.length - 1} more` : ''}: a lazy route or lazy component makes a chunk the precache may drop`,
+  `import("${extraChunks[0]?.specifier}") in ${extraChunks[0]?.file}${extraChunks.length > 1 ? ` and ${extraChunks.length - 1} more` : ''}: a lazy route or component loads its chunk on demand, and a page left open across a deploy would ask for a file the new build dropped`,
 );
 
 // Report.

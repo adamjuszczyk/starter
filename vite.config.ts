@@ -121,12 +121,13 @@ export default defineConfig({
         // registerType). injectRegister: false above skips that wiring, so it
         // has to be set explicitly here — without it, workbox-build's own
         // default (false for both) ships a service worker that sits in
-        // 'waiting' indefinitely with a tab open and 'activated' never fires,
-        // so a new version would be used only once every tab of the app had
-        // been closed, and nothing in an app with no update screen would say so.
-        // Confirmed against a built dist/sw.js without them (no
-        // self.skipWaiting()/clients.claim() present at all);
-        // scripts/check-build.mjs fails when either is missing from the built sw.js.
+        // 'waiting' indefinitely with a tab open (it skips waiting only when a
+        // page posts it a SKIP_WAITING message, which nothing here does) and
+        // 'activated' never fires, so a new version would be used only once
+        // every tab of the app had been closed, and nothing in an app with no
+        // update screen would say so. Confirmed against a built dist/sw.js
+        // without skipWaiting; scripts/check-build.mjs fails when the built
+        // sw.js does not call self.skipWaiting() and clientsClaim() as it loads.
         skipWaiting: true,
         clientsClaim: true,
       },
