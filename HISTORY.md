@@ -2,6 +2,17 @@
 
 The record of finished work and what CONTEXT.md no longer needs to say (BUILD.md 2.2: finished work and build logs live here; CONTEXT.md holds only the current state, and pruning it is a move into this file). Newest entry first. Read it only to trace why something is the way it is.
 
+## 2026-11-06 — the build, chunks 0–2 (coordinator session, Starter environment)
+
+**Setup (21:21–21:35 UTC).** The setup check is in CONTEXT.md "Repo facts". The throwaway tag did not land, so the release is Adam's two commands. Docker Hub through the token fails on the scheme; the mirror carried both images. The meter is derived (DECISIONS 50). Agents run as general-purpose agents reading their Overload definitions (DECISIONS 51).
+
+**Chunk 0** (repo files): builder 21:25–21:41, back once from B0's review for two general rules dropped with Overload-only items (Escalation's "anomalous data", Standing rules' "AI features"; LEARNINGS B6), fixed 22:24–22:26; merged as PR #1 (59bec20).
+**Chunk 1** (scaffold): builder 21:42–22:11; Fact 4 run 12/12 (opens offline, new worker never reloads, next open shows the new version), re-run independently by the reviewer; merged as PR #3 (f1e9818).
+**Chunk 2** (migrations and replay): builder 21:42–22:07 plus a 2-minute follow-up (DECISIONS 54); rebased by the coordinator after 0 and 1 merged; `migration-replay` green with all three steps; merged as PR #2 (5b50649).
+**B0 review** (Sonnet high): 22:13–22:24; chunks 1 and 2 merge-ready, chunk 0 back once for wording.
+
+**No longer true, moved here from CONTEXT.md.** "Planned, not built; nothing waits on Adam … No chunk has started … The estimate: ≈ 8.1 h of running, ≈ $170" (the planning session's state line), and "Nothing under `src/`, `supabase/`, `scripts/`, `.claude/` or `docs/` yet".
+
 ## 2026-11-06 — the planning session (Starter 0.1, before chunk 0)
 
 **What it did.** Put `SPEC.md`, the spec chat's prototype (`prototype/`, from `starter-prototype-src.zip`) and `TASKS.md` into the empty repo as its first commit (`2f5b566`), CONTEXT.md as the second (`6a867ca`), the independent pre-read's 28 findings and the new chunk 0 as the third (`aadc258`), the RULES.md sort appendix as the fourth (`14b9a9c`), and Adam's answers with the two SPEC amendments as the fifth. Overload (`adamjuszczyk/overload-v2`, `staging`, `8e00877`) was cloned read-only beside the repo. The prototype was built and checked: 19 DEMO states at first, 20 after the amendment, no page errors, no clipping at 390 and 1280 px in both themes.
