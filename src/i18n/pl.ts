@@ -39,6 +39,8 @@ export const pl = {
     title: 'Ustawienia',
     account: 'Konto',
     signOut: 'Wyloguj się',
+    // Not in the prototype's words: the sign-out button's word while it signs out (Overload had "SIGNING OUT…"), beside signIn.pending.
+    signingOut: 'Wylogowywanie…',
     look: 'Wygląd',
     theme: 'Motyw',
     themeSystem: 'Jak w urządzeniu',
