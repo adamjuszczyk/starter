@@ -1,0 +1,25 @@
+# CONTEXT.md
+*The starter's current state only (BUILD.md 2.2, step 3; ceiling 75 KB, `scripts/check-context-size.mjs` from chunk 9; rewritten at merges only, and pruning is a move into HISTORY.md). Finished work and build logs live in HISTORY.md; settled decisions in DECISIONS.md; the rules in RULES.md; the process lessons in LEARNINGS.md. Until chunk 9 creates those files, their records live in TASKS.md ("Decided", "Questions for Adam") and in the "Where the build is" lines below.*
+**Read next:** `TASKS.md` (the plan: estimate, decisions, questions, chunks), then the SPEC.md sections the chunk names. RULES.md exists from chunk 9; until then the standing rules are TASKS.md's head and "Process notes".
+
+## What this is
+The starter is the template repo every new app starts from, Adam's or a client's: the stack, a design system, the prototype kit, the shared scripts, the skills and the agent definitions, already working, so a demo can be ready in a day. It holds no business features and no business screens (layer 1, the foundation). **This version is 0.1** (`SPEC.md`, specced 2026-11-04/06; `TASKS.md`, chunks 1–10, planned 2026-11-06; the prototype in `prototype/` as the spec chat left it). Everything that already exists in Overload (`adamjuszczyk/overload-v2`, branch `staging`, commit `8e00877`) is lifted from it; only what Overload lacks is designed new. **It is not doing:** the client-ready build (staging and release scripts, maintenance mode, required updates, What's new, the iPhone install guide, forgot password, user roles, the environment setup script, user admin, audit log, exports, import, monitoring, backups), the offline writing add-on (the Dexie queue), Recharts, BUILD.md's client part, moving Overload or Current onto the starter, the installer demo itself.
+
+## Where the build is
+**Planned, not built (2026-11-06).** The planning session put `SPEC.md`, the prototype (unpacked into `prototype/`, built and checked: 19 DEMO states, no page errors, no clipping at 390 and 1280 px in both themes) and `TASKS.md` into the repo as its first commit, and this file as the second. No chunk has started. The first chunk is the scaffold (TASKS.md, chunk 1), built beside chunk 2 (migrations and the replay). Two questions wait on Adam before the build needs them (TASKS.md "Questions for Adam": Docker in cloud sessions, chunk 3; who pushes the release tag, the release). The estimate: ≈ 7.7 h of running, ≈ $158, ≈ 14% of the week, one 5-hour-window pause likely.
+
+## What exists
+- `SPEC.md`: the spec, verdict list confirmed by Adam 2026-11-06. Behaviour.
+- `prototype/`: the spec chat's prototype, standalone (its own `package.json`, components, screens, words file, tokens); `bash prototype/check/run.sh` builds it, inlines it into one page and screenshots every DEMO state at both widths in both themes into `prototype/check/shots/` (not committed). Layout, order and wording. Chunk 8 turns it into the kit that runs the real screens, after freezing its screenshots in `design/0.1/prototype/`.
+- `TASKS.md`: the plan. Estimate, Decided (38 technical decisions with reasons), Questions for Adam (2), the SPEC sweep, the file structure and stack, the data models (the theme per device, the access list), chunks 1–10 with lifts and verification, the release steps, the "Facts to verify" record, the process notes, and the appendix sorting Overload's RULES.md rules.
+- Nothing under `src/`, `supabase/`, `scripts/`, `.claude/` or `docs/` yet.
+
+## Repo facts
+- Base branch: main
+- Default branch: main
+- Staging: no
+- Hosting: none yet (no Vercel project, no Supabase project: Adam's P2; the replay-based checks run in GitHub Actions on every PR from chunk 2).
+- Overload's clone for lifting: `../overload-v2`, read-only, `git checkout 8e00877`; never pushed to.
+- Agent definitions until chunk 9: Overload's `.claude/agents/` with the brief naming `main` and no staging (TASKS.md "Process notes").
+- This environment (checked 2026-11-06, the planning session): Node 22.23, npm 10.9, Playwright with Chromium pre-installed (`require('playwright')` works), `psql` 16, Docker 29.9 installed but not running (`dockerd --iptables=false --ip6tables=false &` starts it); Docker Hub pulls share one address's anonymous quota of 100 an hour (exhausted at 13:54, free again at 14:15; TASKS.md, Facts 2 and Q1); the replay image and PostgREST were pulled and the two-user sign-in on the replay was verified in this session (Facts 1); `supabase.com` is outside the network policy (its docs are readable from `raw.githubusercontent.com/supabase/supabase`); the git proxy serves public clones.
+- Version: `0.1.0` from chunk 1 (`package.json`); the release is the tag `v0.1.0`.
