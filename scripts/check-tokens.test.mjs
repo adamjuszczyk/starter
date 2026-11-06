@@ -14,18 +14,26 @@
 //   - an inline `style={{ … }}` whose color / background / backgroundColor / *Color, fontSize, borderRadius (and its corners) or
 //     boxShadow is a literal that is not made only of tokens: `{ color: '#f00' }`, `{ fontSize: 13 }`, `{ borderRadius: '50%' }`,
 //     `{ background: ok ? '#0a0' : 'red' }` (each literal of a ternary, `??`, `||`, `&&`).
+//   - in a CSS file, a declaration of color / background / background-color / fill / stroke / any *-color (`border-color`,
+//     `outline-color`, …), font-size, border-radius (and the four corners, physical and logical) or box-shadow / text-shadow whose value
+//     is not made only of tokens: `font-size: 13px`, `color: red`, `border-radius: 6px`, `box-shadow: 0 1px 2px black`; `!important` is
+//     ignored, a `var()` with a typed fallback is typed. A custom property (`--radius-full: 9999px`, which global.css uses to map a
+//     token onto Tailwind) is a definition and not a declaration of use; a name inside parentheses (`@media (min-color: 1)`) is not a
+//     declaration; a string in CSS is never read as one.
 //   - any hex colour (#abc, #abcd, #aabbcc, #aabbccdd) and any colour function (rgb(, rgba(, hsl(, hsla(, hwb(, lab(, lch(, oklab(,
 //     oklch(, color() in a string or a CSS file. In TypeScript a "string" is a string literal or a piece of a template, so a hex in JSX
 //     text, in a comment or in a regular expression is not read; CSS is read with its comments cut out.
 //   - Passes: anything made of tokens (`var(--…)`, `env(…)`, `calc(…)` around them, `inherit`, `transparent`, `currentColor`, `0`), the
-//     named classes (`bg-surface`), and every utility that is not a colour, a text size, a radius or a shadow: widths, heights, paddings,
-//     margins, gaps, offsets, `z-[70]`, `pt-[calc(56px+env(safe-area-inset-top))]`, `border-[3px]` (a width), percentages.
+//     named classes (`bg-surface`), and every utility or property that is not a colour, a text size, a radius or a shadow: widths,
+//     heights, paddings, margins, gaps, offsets, `z-[70]`, `pt-[calc(56px+env(safe-area-inset-top))]`, `border-[3px]` (a width),
+//     percentages, line heights, `background-image` and its size and position.
 //
 // What it would not catch (TASKS.md, chunk 5): a colour or a size computed at runtime (`style={{ color: v }}`, `size + 'px'`); a style
-// object built elsewhere and handed to `style`; a colour NAME in a class or a CSS file (`bg-[red]`, `color: red`); a typed size or radius
-// in a CSS declaration (`font-size: 13px`, `border-radius: 6px`): SPEC names the Tailwind and inline forms; line heights, letter
-// spacing and font families; a hex inside an SVG or any file that is not .ts, .tsx or .css; a value in a comment (a comment is not
-// rendered), even one Tailwind would still read as a class name in a .tsx file. A hex-like name is a hit (`href="#add"`): ALLOWED.
+// object built elsewhere and handed to `style`; a colour NAME in a Tailwind class (`bg-[red]`); the CSS shorthands `border`, `outline`,
+// `font` and `text-decoration` with a named colour or a typed size (a hex or a colour function in them is caught as a hex); a typed
+// value in a custom property that is not a colour (`--radius-full: 9999px`); line heights, letter spacing and font families; a hex
+// inside an SVG or any file that is not .ts, .tsx or .css; a value in a comment (a comment is not rendered), even one Tailwind would
+// still read as a class name in a .tsx file. A hex-like name is a hit (`href="#add"`): ALLOWED.
 //
 // The allowlist (ALLOWED below) is the only way a hit passes, as in check-wording.test.mjs: { file, rule, text, reason }, `text` the
 // matched text; a stale entry fails. It is empty: the tree has nothing to allow.
@@ -140,19 +148,48 @@ function literalLeaves(expr) {
 
 const inModuleSpecifier = (p) => ts.isImportDeclaration(p) || ts.isExportDeclaration(p) || ts.isExternalModuleReference(p) || ts.isModuleDeclaration(p);
 
+// A CSS declaration: a property, a colon and a value up to `;`, `}` or the end, at the start of a block or after another declaration. A
+// custom property (`--name: …`) is a definition, not a use (global.css maps tokens onto Tailwind through them, and `--radius-full: 9999px`
+// there is the `rounded-full` token), and a name inside parentheses (a media feature, `@supports (color: red)`) is not a declaration.
+const DECLARATION = /(?<=^|[;{}])(\s*)(?!--)(-?[a-z][a-z-]*)\s*:\s*([^;{}]+)/gi;
+
+/** The family of a CSS property, or null for one the check does not read (width, padding, line-height, background-image, ...). */
+function cssFamily(name) {
+  if (/^(?:color|background|background-color|fill|stroke)$|-color$/.test(name)) return 'colour';
+  if (name === 'font-size') return 'text-size';
+  if (/^border(?:-(?:top|bottom)-(?:left|right)|-(?:start|end)-(?:start|end))?-radius$/.test(name)) return 'radius';
+  if (name === 'box-shadow' || name === 'text-shadow') return 'shadow';
+  return null;
+}
+
+/** A CSS string made blank (the quotes stay), so a `;` or a property name inside one is not read as a declaration. */
+const blankStrings = (css) => css.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, (m) => m[0] + ' '.repeat(m.length - 2) + m[m.length - 1]);
+const blankOut = (s) => s.replace(/[^\n]/g, ' ');
+
 function scanCss(text) {
-  const withoutComments = text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' ')); // keeps the line numbers
+  const clean = text.replace(/\/\*[\s\S]*?\*\//g, blankOut); // comments cut out, the line numbers kept
   const hits = [];
-  withoutComments.split('\n').forEach((line, i) => {
+  let rest = clean;
+  for (const m of blankStrings(clean).matchAll(DECLARATION)) {
+    const name = m[2].toLowerCase();
+    if (!cssFamily(name)) continue;
+    const start = m.index + m[1].length;
+    const end = m.index + m[0].length;
+    const value = clean.slice(end - m[3].length, end).replace(/!\s*important\s*$/i, '').replace(/\s+/g, ' ').trim();
+    if (!typed(value)) continue;
+    hits.push({ line: clean.slice(0, start).split('\n').length, rule: 'css-declaration', text: `${name}: ${value}` });
+    rest = rest.slice(0, start) + blankOut(clean.slice(start, end)) + rest.slice(end); // its hex is not reported again
+  }
+  rest.split('\n').forEach((line, i) => {
     for (const h of valueHits(line)) hits.push({ line: i + 1, ...h });
   });
-  return hits;
+  return hits.sort((a, b) => a.line - b.line);
 }
 
 /**
  * Every typed-in colour, text size, radius or shadow in a file: `{ line, rule, text }`, rule one of colour, text-size, radius, shadow,
- * inline-style, hex, colour-function. A CSS file is read with its comments cut out; a .ts / .tsx file through the TypeScript parser, so
- * comments and JSX text are never read.
+ * inline-style, css-declaration, hex, colour-function. A CSS file is read with its comments cut out; a .ts / .tsx file through the
+ * TypeScript parser, so comments and JSX text are never read.
  */
 export function scanSource(fileName, text) {
   if (fileName.endsWith('.css')) return scanCss(text);
@@ -240,7 +277,7 @@ test('the tree scan finds a planted file by its path, spares tokens.css and an a
     writeFileSync(join(dir, rel), text);
   };
   put('src/features/x/Screen.tsx', 'export const Screen = () => <p className="text-[13px]" />;\n');
-  put('src/styles/global.css', '.a {\n  color: #f00;\n}\n');
+  put('src/styles/global.css', '.a {\n  color: #f00;\n  font-size: 13px;\n}\n');
   put('src/styles/tokens.css', ':root { --a: #f00; --b: rgba(0, 0, 0, 0.4); }\n');
   put('src/lib/ok.ts', "export const ACCENT = '#2453bd';\n");
   const allowed = [
@@ -249,7 +286,7 @@ test('the tree scan finds a planted file by its path, spares tokens.css and an a
   ];
   try {
     const planted = scanTree(dir, { allowed });
-    assert.deepEqual(planted.found.map((h) => `${h.file}:${h.line} ${h.rule} ${h.text}`), ['src/features/x/Screen.tsx:1 text-size text-[13px]', 'src/styles/global.css:2 hex #f00']);
+    assert.deepEqual(planted.found.map((h) => `${h.file}:${h.line} ${h.rule} ${h.text}`), ['src/features/x/Screen.tsx:1 text-size text-[13px]', 'src/styles/global.css:2 css-declaration color: #f00', 'src/styles/global.css:3 css-declaration font-size: 13px']);
     assert.deepEqual([...planted.used], [0], 'the matching entry was used, the other was not (the stale-entry test would fail on it)');
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -302,12 +339,79 @@ test('an inline style with a colour, a size, a radius or a shadow that is typed 
   assert.deepEqual(hitsOf('a.tsx', "const A = ({ c }: { c?: string }) => <p style={{ ...base, color: c ?? 'red', 'font-size': 4 }} />"), ['inline-style:color: red'], 'a spread is skipped, a ?? is read, a kebab-case key is not a React style key');
 });
 
+test('a CSS declaration with a typed-in text size, radius, colour or shadow is a hit, once, wherever it is written', () => {
+  // text size
+  assert.deepEqual(hitsOf('a.css', 'body { font-size: 13px; }'), ['css-declaration:font-size: 13px']);
+  assert.deepEqual(
+    hitsOf('a.css', '.a { font-size: 1.25rem }\n.b{font-size:100%}\n.c { font-size: larger; }\n.d { font-size: calc(1rem + 2px); }\n.e { font-size: var(--fs-base, 13px); }'),
+    ['css-declaration:font-size: 1.25rem', 'css-declaration:font-size: 100%', 'css-declaration:font-size: larger', 'css-declaration:font-size: calc(1rem + 2px)', 'css-declaration:font-size: var(--fs-base, 13px)'],
+    'the last declaration needs no semicolon, a size keyword is a size, a typed fallback is typed in',
+  );
+  // radius, and the four corners, physical and logical
+  assert.deepEqual(
+    hitsOf('a.css', '.a { border-radius: 6px; }\n.b { border-radius: 4px 8px; }\n.c { border-top-left-radius: 4px; border-end-end-radius: 1rem; }\n.d { border-start-end-radius: 50% }'),
+    ['css-declaration:border-radius: 6px', 'css-declaration:border-radius: 4px 8px', 'css-declaration:border-top-left-radius: 4px', 'css-declaration:border-end-end-radius: 1rem', 'css-declaration:border-start-end-radius: 50%'],
+  );
+  // colour: a name is typed in too, and a hex or a function is one hit for the declaration, not a second for itself
+  assert.deepEqual(
+    hitsOf('a.css', '.a { color: red; }\n.b { background: #f00; }\n.c { background-color: rgb(1 2 3); }\n.d { border-color: blue; outline-color: green; }'),
+    ['css-declaration:color: red', 'css-declaration:background: #f00', 'css-declaration:background-color: rgb(1 2 3)', 'css-declaration:border-color: blue', 'css-declaration:outline-color: green'],
+  );
+  assert.deepEqual(
+    hitsOf('a.css', '.a { fill: #fff; stroke: black; -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); text-decoration-color: red; caret-color: blue; accent-color: red; }'),
+    ['css-declaration:fill: #fff', 'css-declaration:stroke: black', 'css-declaration:-webkit-tap-highlight-color: rgba(0, 0, 0, 0.1)', 'css-declaration:text-decoration-color: red', 'css-declaration:caret-color: blue', 'css-declaration:accent-color: red'],
+    'fill, stroke and every *-color property, vendor prefixes included',
+  );
+  assert.deepEqual(hitsOf('a.css', '.a { background: linear-gradient(#f00, #00f); }'), ['css-declaration:background: linear-gradient(#f00, #00f)'], 'one hit, not one more for each hex');
+  // shadow: a typed offset or width is typed in even beside a token colour
+  assert.deepEqual(
+    hitsOf('a.css', '.a { box-shadow: 0 1px 2px black; }\n.b { box-shadow: 0 0 0 2px var(--accent); }\n.c { text-shadow: 0 1px #fff; }'),
+    ['css-declaration:box-shadow: 0 1px 2px black', 'css-declaration:box-shadow: 0 0 0 2px var(--accent)', 'css-declaration:text-shadow: 0 1px #fff'],
+  );
+  // how it is written: !important, upper case, a value across lines, inside an at-rule, on its own line number
+  assert.deepEqual(hitsOf('a.css', '.a { font-size: 13px !important; }'), ['css-declaration:font-size: 13px']);
+  assert.deepEqual(hitsOf('a.css', '.a { FONT-SIZE: 13px; Color: Red }'), ['css-declaration:font-size: 13px', 'css-declaration:color: Red'], 'a property name is not case sensitive');
+  assert.deepEqual(hitsOf('a.css', '.a {\n  box-shadow:\n    0 1px 2px black,\n    0 2px 4px black;\n}'), ['css-declaration:box-shadow: 0 1px 2px black, 0 2px 4px black'], 'a value across lines');
+  assert.equal(scanSource('a.css', '.a {\n  color: var(--x);\n  box-shadow:\n    0 1px 2px black;\n}')[0].line, 3, 'on the line of its property');
+  assert.deepEqual(
+    hitsOf('a.css', '@media (min-width: 900px) { .a { border-radius: 6px; } }\n@layer base { body { color: red } }'),
+    ['css-declaration:border-radius: 6px', 'css-declaration:color: red'],
+    'inside an at-rule',
+  );
+});
+
+test('CSS declarations made of tokens or keywords, and every property that is not a colour, size, radius or shadow, pass', () => {
+  const ok = [
+    // tokens
+    'body { font-size: var(--fs-base); border-radius: var(--radius-md); color: var(--text-primary); background: var(--base); }',
+    '.a { background-color: var(--surface); border-color: var(--border); box-shadow: var(--shadow-panel); text-shadow: none; }',
+    '.d { font-size: calc(var(--fs-base) * 1.1); color: var(--x) !important; }',
+    // keywords and zero
+    '.b { color: inherit; color: currentColor; background: transparent; background: none; border-color: transparent; box-shadow: none; }',
+    '.c { border-radius: 0; font-size: inherit; font-size: initial; fill: currentColor; stroke: none; }',
+    // properties that are not read: layout, line height, spacing, the other background parts, the shorthands without a typed colour
+    '.e { width: 232px; max-width: 400px; height: 100%; min-height: 40px; padding: 8px 16px; margin: 0 auto; gap: 10px; top: 3px; z-index: 70; }',
+    '.f { line-height: 1.5; letter-spacing: 0.02em; font-weight: 600; font-family: var(--font-sans); font-size-adjust: 0.5; transition: opacity 0.2s ease; }',
+    '.g { outline: 2px solid var(--accent); outline-offset: 2px; border: 1px solid var(--border); border-width: 1px; cursor: pointer; transform: translateZ(0); }',
+    '.h { background-image: url(/x.png); background-size: 20px 20px; background-position: 0 0; color-scheme: light dark; }',
+    // a custom property is a definition (global.css maps the tokens onto Tailwind's theme with them)
+    ':root { --radius-full: 9999px; --fs-xs: 12px; --shadow-x: 0 1px 2px var(--wire); }',
+    '@theme inline { --color-*: initial; --color-bg: var(--base); --radius-*: initial; --radius-full: 9999px; --text-xs: var(--fs-xs); }',
+    // a name that is not a declaration: a media feature, a selector with a pseudo-class
+    '@media (min-color: 1) { .i { color: var(--x); } }\n@media (prefers-color-scheme: dark) { .i { color: var(--x); } }\n@supports (color: red) { .i { color: var(--x); } }',
+    'button:disabled { cursor: not-allowed; }\na:hover, a:focus-visible { color: var(--x); }\ninput:not(:disabled) { cursor: pointer; }',
+    // a comment, and a string that says a declaration
+    '/* font-size: 13px; color: red; border-radius: 6px */ .j::before { content: "font-size: 13px; color: red"; }',
+  ];
+  for (const css of ok) assert.deepEqual(hitsOf('a.css', css), [], css);
+});
+
 test('a hex colour or a colour function in a string, a template piece or a CSS file is a hit', () => {
   assert.deepEqual(hitsOf('a.ts', "export const ACCENT = '#2453bd'"), ['hex:#2453bd']);
   assert.deepEqual(hitsOf('a.tsx', 'const A = () => <svg><path fill="#fff" stroke="#ABCDEF" /></svg>'), ['hex:#fff', 'hex:#ABCDEF']);
   assert.deepEqual(hitsOf('a.ts', "export const C = ['#abcd', '#aabbccdd', `x ${y} #f0f`]"), ['hex:#abcd', 'hex:#aabbccdd', 'hex:#f0f']);
   assert.deepEqual(hitsOf('a.ts', "export const C = ['rgb(0 0 0)', 'rgba(0,0,0,.5)', 'hsl(1 2% 3%)', 'hsla(1,2%,3%,.5)', 'oklch(0.5 0.1 20)', 'color(display-p3 1 0 0)']"), ['colour-function:rgb(', 'colour-function:rgba(', 'colour-function:hsl(', 'colour-function:hsla(', 'colour-function:oklch(', 'colour-function:color(']);
-  assert.deepEqual(hitsOf('a.css', '.a { color: #f00; }\n.b { background: rgb(1 2 3); }\n.c { border: 1px solid #ABC; }'), ['hex:#f00', 'colour-function:rgb(', 'hex:#ABC']);
+  assert.deepEqual(hitsOf('a.css', '.a { border: 1px solid #ABC; }\n.b { filter: drop-shadow(0 0 2px rgb(0 0 0)); }\n.c { --accent: #f00; }'), ['hex:#ABC', 'colour-function:rgb(', 'hex:#f00'], 'in a shorthand and a custom property, which the declaration rule below does not read');
   assert.deepEqual(hitsOf('a.tsx', "const A = () => <p className=\"border-[3px_solid_#f00]\" />"), ['hex:#f00'], 'a typed colour inside a value that is not a colour utility\'s');
 });
 
@@ -348,6 +452,6 @@ test('a value that is computed at runtime, a comment, JSX text, a URL fragment, 
   ];
   assert.deepEqual(hitsOf('a.tsx', ok.join('\n')), []);
   assert.deepEqual(hitsOf('a.css', '/* a typed-in value such as text-[13px] or bg-[#f00] still builds; #f00 and rgb(1,2,3) are what this check fails on */\n.a { color: var(--x); }'), [], 'a CSS comment is cut out (global.css\'s own says so)');
-  assert.deepEqual(hitsOf('a.css', '/* one\n   two */ .a { color: #f00; }'), ['hex:#f00'], 'and the line numbers are kept');
+  assert.deepEqual(hitsOf('a.css', '/* one\n   two */ .a { color: #f00; }'), ['css-declaration:color: #f00'], 'and the line numbers are kept');
   assert.equal(scanSource('a.css', '/* one\n   two */\n.a { color: #f00; }')[0].line, 3);
 });
