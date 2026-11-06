@@ -59,6 +59,13 @@ jobs:
       - name: Install dependencies (npm ci)
         run: npm ci
 
+      # Every script's tests (node --test "scripts/*.test.mjs"), among them
+      # verify-rls-list.test.mjs: the access list, the code and the migrations
+      # must agree (SPEC Rule 6). The tests that build throwaway git repos set
+      # their own identity and branch name, so the runner needs no git config.
+      - name: Script tests (npm run check)
+        run: npm run check
+
       # The self-test, always: the replay also applies scripts/verify-rls-fixture/
       # (three tables, one per kind, two users with rows) and verify-rls must PASS
       # every check on it, as the role a hosted project runs (PostgREST connected

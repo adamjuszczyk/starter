@@ -10,12 +10,15 @@
 #     signed-out caller is the real `anon` (PGRST_DB_ANON_ROLE=anon), not a stand-in for it;
 #   - it proves that first: the PostgREST sessions belong to authenticator and an authenticator session refuses a bare
 #     DELETE (21000, safeupdate). Without that the probes would say nothing about a hosted project;
-#   - it hands verify-rls.mjs the catalog (RLS on, grants) that psql reads, since PostgREST cannot show it.
+#   - it hands verify-rls.mjs the catalog (RLS on, the grants, what anon holds) that psql reads, since PostgREST cannot
+#     show it.
 #
 # Usage:  bash scripts/verify-rls-replay.sh [--fixture]
 #   --fixture  the self-test: the replay also applies scripts/verify-rls-fixture/ (three tables, one per kind, and two
 #              users with rows) and verify-rls.mjs probes those instead of supabase/access.json. Every check must PASS.
-#              Without it the app's list is probed; the starter's is empty, which passes.
+#              Without it the app's list is probed; the starter's is empty, which passes. A list with tables needs rows
+#              to probe: the app adds supabase/verify-rls-seed.sql (the two test users and a row of each in every
+#              table), which is applied after the migrations when the file exists, and only then.
 # Needs:  Docker (start dockerd first in this container); node_modules (`npm ci`: verify-rls.mjs imports
 #         @supabase/supabase-js); pulls postgrest/postgrest.
 # Exit:   0 every check passed (or the list is empty); 1 a leak or a failure, or the session is not authenticator's;
@@ -49,6 +52,20 @@ trap cleanup EXIT
 # supabase_admin, the image's superuser, inside the replay container: to set authenticator's password and to read the
 # catalog and the sessions.
 psql_admin() { docker exec -i -e PGPASSWORD=postgres "$db" psql -h 127.0.0.1 -U supabase_admin -d postgres -X "$@"; }
+
+# The app's rows for the probes (app mode only: the fixture brings its own). An app that has tables adds
+# supabase/verify-rls-seed.sql: the two test users (scripts/replay-tokens.mjs's USER_A and USER_B) in auth.users, and at
+# least one row of each in every table of the access list. It runs as postgres in one transaction, like a migration,
+# after the migrations. With no file there is no seed, and a non-empty list then fails on "0 own rows" (never a pass).
+SEED="supabase/verify-rls-seed.sql"
+if [ "${#mode[@]}" -eq 0 ] && [ -f "$SEED" ]; then
+  if seed_out=$(docker exec -i -e PGPASSWORD=postgres "$db" psql -h 127.0.0.1 -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 --single-transaction -f - < "$SEED" 2>&1); then
+    echo "verify-rls-replay: seed applied ($SEED, as postgres)"
+  else
+    echo "$seed_out" | sed 's/^/        /' >&2
+    echo "verify-rls-replay: couldn't apply $SEED." >&2; exit 2
+  fi
+fi
 
 # A password and a JWT secret for this run only, never printed: the values reach docker and node through the
 # environment (`docker run -e NAME`, `NAME=... node`), not through a command line.
@@ -97,7 +114,10 @@ case "$bare_delete" in
 esac
 
 # The catalog verify-rls.mjs cannot ask PostgREST for: per relation in public, its kind, whether RLS is on
-# (pg_class.relrowsecurity) and the API roles' grants (information_schema.role_table_grants).
+# (pg_class.relrowsecurity), the API roles' grants as listed (information_schema.role_table_grants, which shows
+# neither grants to PUBLIC nor column-level ones) and what anon actually holds: has_table_privilege('anon', …) counts a
+# grant to PUBLIC and a default privilege the same as one made to anon by name, and has_any_column_privilege finds
+# column-level grants. verify-rls.mjs fails an own or a signed-in table on which anon holds anything (Decided 39).
 psql_admin -tA -v ON_ERROR_STOP=1 -f - > "$tmp/catalog.json" <<'SQL' \
   || { echo "verify-rls-replay: couldn't read the catalog." >&2; exit 2; }
 select coalesce(json_object_agg(r.relname, json_build_object(
@@ -111,9 +131,16 @@ select coalesce(json_object_agg(r.relname, json_build_object(
                  where table_schema = 'public' and table_name = r.relname
                    and grantee in ('anon', 'authenticated', 'service_role')
                  group by grantee) g
-         ), '{}'::json)
+         ), '{}'::json),
+         'anon', coalesce((
+           select json_agg(p order by p)
+           from unnest(array['DELETE', 'INSERT', 'REFERENCES', 'SELECT', 'TRIGGER', 'TRUNCATE', 'UPDATE']) p
+           where has_table_privilege('anon', r.oid, p)
+         ), '[]'::json),
+         'anon_columns', has_any_column_privilege('anon', r.oid, 'SELECT,INSERT,UPDATE,REFERENCES')
+                         and not has_table_privilege('anon', r.oid, 'SELECT,INSERT,UPDATE,REFERENCES')
        )), '{}'::json)
-from (select c.relname::text as relname, c.relkind::text as relkind, c.relrowsecurity, c.reloptions
+from (select c.oid, c.relname::text as relname, c.relkind::text as relkind, c.relrowsecurity, c.reloptions
       from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f')) r;
 SQL

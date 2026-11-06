@@ -17,7 +17,8 @@
 //                signed out reads the table  PASS at 1 or more rows; 0 is a FAIL
 //                A reads the table           PASS at 1 or more rows: a signed-in user is not `anon`, so a public
 //                                            table needs its grant for `authenticated` as well
-//   every kind RLS is on (the catalog, which the wrapper reads with psql: --catalog) and the grants are listed
+//   every kind RLS is on and the grants are listed (the catalog, which the wrapper reads with psql: --catalog); an own
+//              or a signed-in table also holds nothing for anon, directly or through PUBLIC (Decided 39)
 //
 // A refusal (Postgres 42501, read from PostgREST's error code, never the HTTP status: 401 for anon, 403 for
 // authenticated, Decided 40) means different things to different probes (Decided 14, SPEC "a missing grant can look
@@ -35,7 +36,9 @@
 //   --fixture      the fixture's list (scripts/verify-rls-fixture/access.json) instead of supabase/access.json
 //   --access FILE  another list (the tests use it); not with --fixture
 //   --local URL    the PostgREST root (the replay serves at the root, not under /rest/v1)
-//   --catalog FILE the wrapper's psql dump: { table: { relkind, rls, options, grants } } for the public schema
+//   --catalog FILE the wrapper's psql dump for the public schema: { table: { relkind, rls, options, grants, anon,
+//                  anon_columns } } (anon: what anon holds, by has_table_privilege, so PUBLIC counts; anon_columns:
+//                  whether it holds column-level privileges only)
 // Env:    RLS_JWT_SECRET  the secret PostgREST was started with (the wrapper sets it)
 // Exit:   0 every check passed (or the list is empty); 1 a leak or a failure; 2 could not run (bad arguments,
 //         unreadable files, no secret). An empty list passes: the starter has no tables.
@@ -119,7 +122,7 @@ export function classifyProbe({ probe, count, foreign, total, error }) {
       if (count === 0) {
         return {
           status: 'FAIL',
-          detail: '0 own rows: an owner who sees nothing proves nothing (a policy hiding every row, auth.uid() null, or no seed row for A)',
+          detail: '0 own rows: an owner who sees nothing proves nothing (a policy hiding every row, auth.uid() null, or no row for A in the seed, supabase/verify-rls-seed.sql)',
         };
       }
       return { status: 'PASS', detail: `${count} own row(s)` };
@@ -150,29 +153,58 @@ export function formatGrants(grants) {
     .join(' ');
 }
 
-// "RLS on", every kind. entry is the catalog's row for the table (undefined when the replayed database has none).
-// A table has `relrowsecurity`; a view has none, so its rows are protected by the tables under it only when it runs
-// with the caller's rights (security_invoker), not its owner's; a materialized view or foreign table has no RLS at all.
+// What the catalog says anon holds on a table, as text: '' for nothing, else "ALL" or the privileges, with a note when
+// some are column-level only; null when the catalog does not say (the entry has no `anon`: a stale or hand-made dump).
+// `anon` is what has_table_privilege('anon', …) answers, so it counts what anon holds through PUBLIC as well as what
+// is granted to it by name (information_schema.role_table_grants shows neither PUBLIC nor column-level grants).
+function anonHolds(entry) {
+  if (!Array.isArray(entry.anon)) return null;
+  const parts = [];
+  if (entry.anon.length > 0) parts.push(SELECT_PRIVILEGES.every((p) => entry.anon.includes(p)) ? 'ALL' : entry.anon.join(','));
+  if (entry.anon_columns === true) parts.push('column-level privileges');
+  return parts.join(' and ');
+}
+
+// The catalog check, every kind. entry is the catalog's row for the table (undefined when the replayed database
+// has none): RLS on, and, for an own or a signed-in table, nothing held by anon (Decided 39).
+// RLS: a table has `relrowsecurity`; a view has none, so its rows are protected by the tables under it only when it
+// runs with the caller's rights (security_invoker), not its owner's; a materialized view or foreign table has no RLS.
+// anon: Supabase's default privileges give anon ALL on every new table, so one wrong policy on a table anon can read
+// leaks to the public. After `revoke all … from anon` a signed-out request is refused (42501) whatever the policies say,
+// and a `using (true)` mistake reaches signed-in users only. A migration that leans on the defaults (or on PUBLIC)
+// passes every probe that has no wrong policy to find, and this is the check that fails it. A public table is meant
+// to be read by anon, so it is not judged here.
 export function classifyCatalog({ kind, entry }) {
   if (!entry) return { status: 'FAIL', detail: 'not in the replayed database: no migration creates it' };
-  const grants = `grants: ${formatGrants(entry.grants)}`;
+  const problems = [];
+  const facts = [];
   if (entry.relkind === 'r' || entry.relkind === 'p') {
-    return entry.rls
-      ? { status: 'PASS', detail: `RLS on; ${grants}` }
-      : { status: 'FAIL', detail: `RLS is off: every row is open to any role with a grant; ${grants}` };
-  }
-  const invoker = (entry.options ?? []).some((option) => /^security_invoker=(true|on)$/i.test(option));
-  if (entry.relkind === 'v' && invoker) {
-    return { status: 'PASS', detail: `a view with security_invoker on: the tables under it enforce RLS; ${grants}` };
-  }
-  if (kind === 'public') return { status: 'PASS', detail: `not a table (relkind ${entry.relkind}), public by design; ${grants}` };
-  return {
-    status: 'FAIL',
-    detail:
+    if (entry.rls) facts.push('RLS on');
+    else problems.push('RLS is off: every row is open to any role with a grant');
+  } else if (entry.relkind === 'v' && (entry.options ?? []).some((option) => /^security_invoker=(true|on)$/i.test(option))) {
+    facts.push('a view with security_invoker on: the tables under it enforce RLS');
+  } else if (kind === 'public') {
+    facts.push(`not a table (relkind ${entry.relkind}), public by design`);
+  } else {
+    problems.push(
       entry.relkind === 'v'
-        ? `a view without security_invoker runs with its owner's rights and bypasses RLS; ${grants}`
-        : `not a table (relkind ${entry.relkind}): it has no RLS; ${grants}`,
-  };
+        ? "a view without security_invoker runs with its owner's rights and bypasses RLS"
+        : `not a table (relkind ${entry.relkind}): it has no RLS`,
+    );
+  }
+  if (kind !== 'public') {
+    const held = anonHolds(entry);
+    if (held === null) problems.push('the catalog does not say what anon holds (run through scripts/verify-rls-replay.sh)');
+    else if (held !== '') {
+      problems.push(
+        `anon holds ${held} on this ${kind} table, directly or through PUBLIC: Decided 39 revokes everything from anon in the migration that creates it, then grants what is needed`,
+      );
+    } else facts.push('anon holds nothing');
+  }
+  const grants = `grants: ${formatGrants(entry.grants)}`;
+  return problems.length > 0
+    ? { status: 'FAIL', detail: `${problems.join('; ')}; ${grants}` }
+    : { status: 'PASS', detail: `${facts.join('; ')}; ${grants}` };
 }
 
 // ---- the requests -----------------------------------------------------------------------------------------------

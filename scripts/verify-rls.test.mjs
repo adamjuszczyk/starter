@@ -130,14 +130,82 @@ test('what each kind is asked, and as whom', () => {
   assert.deepEqual(asked('public'), ['signed out reads rows', 'A reads rows']);
 });
 
-// ---- the catalog check: "RLS on", every kind --------------------------------------------------------------------
+// ---- the catalog check: "RLS on" for every kind, and nothing for anon on an own or a signed-in table (Decided 39) ----
 
-const table = (extra = {}) => ({ relkind: 'r', rls: true, options: null, grants: { authenticated: ['SELECT'] }, ...extra });
+// The catalog's row for a table, as the wrapper's psql dump has it: `anon` is what has_table_privilege('anon', …) says
+// anon holds (a grant to PUBLIC and a default privilege count), `anon_columns` whether it holds column-level privileges.
+const table = (extra = {}) => ({
+  relkind: 'r', rls: true, options: null, grants: { authenticated: ['SELECT'] }, anon: [], anon_columns: false, ...extra,
+});
+const ALL_PRIVILEGES = ['DELETE', 'INSERT', 'REFERENCES', 'SELECT', 'TRIGGER', 'TRUNCATE', 'UPDATE'];
 
-test('catalog: a table with RLS on passes for every kind and lists its grants', () => {
-  for (const kind of ['own', 'signed-in', 'public']) {
-    assert.deepEqual(classifyCatalog({ kind, entry: table() }), { status: 'PASS', detail: 'RLS on; grants: authenticated=SELECT' });
+test('catalog: a table with RLS on passes for every kind and lists its grants; own and signed-in also say anon holds nothing', () => {
+  assert.deepEqual(classifyCatalog({ kind: 'own', entry: table() }), {
+    status: 'PASS',
+    detail: 'RLS on; anon holds nothing; grants: authenticated=SELECT',
+  });
+  assert.deepEqual(classifyCatalog({ kind: 'signed-in', entry: table() }), {
+    status: 'PASS',
+    detail: 'RLS on; anon holds nothing; grants: authenticated=SELECT',
+  });
+  assert.deepEqual(classifyCatalog({ kind: 'public', entry: table({ anon: ['SELECT'], grants: { anon: ['SELECT'], authenticated: ['SELECT'] } }) }), {
+    status: 'PASS',
+    detail: 'RLS on; grants: anon=SELECT authenticated=SELECT',
+  });
+});
+
+test('catalog: an own or signed-in table on which anon holds anything is a FAIL, whatever the policies say (Decided 39)', () => {
+  for (const kind of ['own', 'signed-in']) {
+    const some = classifyCatalog({ kind, entry: table({ anon: ['SELECT'], grants: { anon: ['SELECT'], authenticated: ['SELECT'] } }) });
+    assert.equal(some.status, 'FAIL', kind);
+    assert.match(some.detail, new RegExp(`anon holds SELECT on this ${kind} table, directly or through PUBLIC: Decided 39`));
+    // The default privileges Supabase gives a new table: ALL, to anon, authenticated and service_role.
+    const defaults = classifyCatalog({ kind, entry: table({ anon: ALL_PRIVILEGES, grants: { anon: ALL_PRIVILEGES, authenticated: ALL_PRIVILEGES, service_role: ALL_PRIVILEGES } }) });
+    assert.equal(defaults.status, 'FAIL', kind);
+    assert.match(defaults.detail, /anon holds ALL on this/);
+    assert.match(defaults.detail, /grants: anon=ALL authenticated=ALL service_role=ALL/);
   }
+});
+
+test('catalog: anon through PUBLIC is anon holding it: the list has no grant to anon by name and the table still fails', () => {
+  // information_schema.role_table_grants shows no grant to PUBLIC; has_table_privilege('anon', …) does count it.
+  const viaPublic = classifyCatalog({ kind: 'own', entry: table({ anon: ['SELECT'], grants: { authenticated: ['SELECT'] } }) });
+  assert.equal(viaPublic.status, 'FAIL');
+  assert.match(viaPublic.detail, /anon holds SELECT on this own table, directly or through PUBLIC/);
+  assert.match(viaPublic.detail, /grants: authenticated=SELECT$/);
+});
+
+test('catalog: column-level privileges for anon fail an own or signed-in table too', () => {
+  for (const kind of ['own', 'signed-in']) {
+    const r = classifyCatalog({ kind, entry: table({ anon_columns: true }) });
+    assert.equal(r.status, 'FAIL', kind);
+    assert.match(r.detail, /anon holds column-level privileges on this/);
+  }
+  const both = classifyCatalog({ kind: 'own', entry: table({ anon: ['SELECT'], anon_columns: true }) });
+  assert.match(both.detail, /anon holds SELECT and column-level privileges/);
+});
+
+test('catalog: a catalog that does not say what anon holds fails an own or signed-in table (never a pass on missing data)', () => {
+  for (const kind of ['own', 'signed-in']) {
+    const withoutAnon = table();
+    delete withoutAnon.anon;
+    const r = classifyCatalog({ kind, entry: withoutAnon });
+    assert.equal(r.status, 'FAIL', kind);
+    assert.match(r.detail, /the catalog does not say what anon holds/);
+  }
+});
+
+test('catalog: a public table is read by anon on purpose, so what anon holds is not judged', () => {
+  assert.equal(classifyCatalog({ kind: 'public', entry: table({ anon: ALL_PRIVILEGES, anon_columns: true }) }).status, 'PASS');
+  const withoutAnon = table();
+  delete withoutAnon.anon;
+  assert.equal(classifyCatalog({ kind: 'public', entry: withoutAnon }).status, 'PASS');
+});
+
+test('catalog: the reasons are all given when a table has more than one problem', () => {
+  const r = classifyCatalog({ kind: 'own', entry: table({ rls: false, anon: ['SELECT'] }) });
+  assert.equal(r.status, 'FAIL');
+  assert.match(r.detail, /RLS is off: .*; anon holds SELECT on this own table/);
 });
 
 test('catalog: a table with RLS off is a FAIL for every kind, public included', () => {
@@ -396,7 +464,7 @@ const goodWorld = () => ({
 const goodCatalog = () => ({
   fx_own: table(),
   fx_shared: table(),
-  fx_public: table({ grants: { anon: ['SELECT'], authenticated: ['SELECT'] } }),
+  fx_public: table({ anon: ['SELECT'], grants: { anon: ['SELECT'], authenticated: ['SELECT'] } }),
 });
 const FIXTURE_LIST = { fx_own: 'own', fx_shared: 'signed-in', fx_public: 'public' };
 
@@ -462,7 +530,8 @@ test('run: the three kinds as the fixture builds them pass every check (exit 0)'
   assert.equal(code, 0, text);
   assert.match(text, /verify-rls: 3 tables, 10 checks — 10 pass, 0 leak, 0 fail/);
   assert.match(text, /verify-rls: ok/);
-  assert.match(line(text, 'catalog', 'fx_own'), /PASS  RLS on; grants: authenticated=SELECT/);
+  assert.match(line(text, 'catalog', 'fx_own'), /PASS  RLS on; anon holds nothing; grants: authenticated=SELECT/);
+  assert.match(line(text, 'catalog', 'fx_public'), /PASS  RLS on; grants: anon=SELECT authenticated=SELECT/);
   assert.match(line(text, 'A reads own rows', 'fx_own'), /PASS  2 own row\(s\)/);
   assert.match(line(text, 'signed out reads rows', 'fx_own'), /PASS  permission denied \(42501\)/);
   assert.match(line(text, 'B counts A', 'fx_shared'), /PASS  2 row\(s\) of the other user's visible/);
@@ -542,6 +611,20 @@ test('run: a table with RLS off fails the catalog check even when every probe pa
   assert.equal(code, 1);
   assert.match(line(text, 'catalog', 'fx_shared'), /FAIL  RLS is off/);
   assert.match(text, /0 leak, 1 fail/);
+});
+
+test('run: an own or signed-in table on which anon holds anything fails the catalog check even when every probe passes (Decided 39)', async () => {
+  const catalog = goodCatalog();
+  // fx_own leans on the default privileges (no revoke); fx_shared holds a grant that reaches anon through PUBLIC.
+  catalog.fx_own.anon = ALL_PRIVILEGES;
+  catalog.fx_own.grants = { anon: ALL_PRIVILEGES, authenticated: ALL_PRIVILEGES, service_role: ALL_PRIVILEGES };
+  catalog.fx_shared.anon = ['SELECT'];
+  const { code, text } = await runAgainst({ world: goodWorld(), catalog });
+  assert.equal(code, 1);
+  assert.match(line(text, 'catalog', 'fx_own'), /FAIL  anon holds ALL on this own table/);
+  assert.match(line(text, 'catalog', 'fx_shared'), /FAIL  anon holds SELECT on this signed-in table/);
+  assert.match(line(text, 'catalog', 'fx_public'), /PASS/);
+  assert.match(text, /0 leak, 2 fail/);
 });
 
 test('run: an empty list passes and says so (the starter has no tables)', async () => {
@@ -636,6 +719,20 @@ test('verify-rls-replay.sh proves the session is authenticator\'s before it prob
   assert.match(code, /trap cleanup EXIT/);
 });
 
+test('verify-rls-replay.sh applies supabase/verify-rls-seed.sql in app mode only, when the file exists, as postgres in one transaction, before the probes', () => {
+  const code = codeOf('./verify-rls-replay.sh');
+  const at = (needle) => code.indexOf(needle);
+  assert.match(code, /SEED="supabase\/verify-rls-seed\.sql"/);
+  // App mode (no --fixture: the fixture brings its own users and rows) and a file that is there; no file, no seed.
+  assert.match(code, /if \[ "\$\{#mode\[@\]\}" -eq 0 \] && \[ -f "\$SEED" \]; then/);
+  assert.match(code, /-U postgres -d postgres -X -q -v ON_ERROR_STOP=1 --single-transaction -f - < "\$SEED"/);
+  assert.match(code, /couldn't apply \$SEED\.[^\n]*exit 2/, 'a seed that fails is exit 2, never a pass');
+  assert.ok(at('SEED=') > at('replay-migrations.sh --keep'), 'after the migrations');
+  assert.ok(at('SEED=') < at('node scripts/verify-rls.mjs'), 'before the probes');
+  // replay-tokens.mjs tells an app author which file to write.
+  assert.match(text('./replay-tokens.mjs'), /supabase\/verify-rls-seed\.sql/);
+});
+
 test('replay-migrations.sh --fixture replays the fixture after the app\'s migrations, the seed last', () => {
   const code = codeOf('./replay-migrations.sh');
   assert.match(code, /--fixture\) fixture=1; shift ;;/);
@@ -644,13 +741,16 @@ test('replay-migrations.sh --fixture replays the fixture after the app\'s migrat
   assert.match(code, /FIXTURE_DIR="scripts\/verify-rls-fixture"/);
 });
 
-test('the migration-replay workflow runs the sign-ups check, then the self-test and the app\'s list once npm ci has run', () => {
+test('the migration-replay workflow runs the sign-ups check, every script test, then the self-test and the app\'s list once npm ci has run', () => {
   const runs = [...text('../.github/workflows/migration-replay.yml').matchAll(/^\s+run: (.+)$/gm)].map((m) => m[1].trim());
   const step = (command) => {
     assert.ok(runs.includes(command), `the workflow has no step \`${command}\``);
     return runs.indexOf(command);
   };
   assert.ok(step('node scripts/check-signups.mjs') >= 0);
+  // `npm run check` is every scripts/*.test.mjs, verify-rls-list.test.mjs among them (SPEC Rule 6's guard).
+  assert.match(text('../package.json'), /"check": "node --test \\"scripts\/\*\.test\.mjs\\""/);
+  assert.ok(step('npm ci') < step('npm run check'));
   assert.ok(step('npm ci') < step('bash scripts/verify-rls-replay.sh --fixture'));
   assert.ok(step('bash scripts/verify-rls-replay.sh --fixture') < step('bash scripts/verify-rls-replay.sh'));
 });

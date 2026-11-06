@@ -11,8 +11,10 @@
 // which verify-rls.mjs reports as a FAIL on every probe, never a pass.
 //
 // USER_A and USER_B are the two test users. scripts/verify-rls-fixture/seed.sql inserts them into auth.users under
-// these ids, and verify-rls.test.mjs fails if the two files drift apart. An app that has tables adds rows for both
-// ids to its own seed; with no rows for A, verify-rls.mjs fails the owner probe ("A reads 0 own rows").
+// these ids, and verify-rls.test.mjs fails if the two files drift apart. An app that has tables does the same in
+// supabase/verify-rls-seed.sql: the two users under these ids, and at least one row of each in every table of its
+// access list. scripts/verify-rls-replay.sh applies that file after the migrations (when it exists); with no rows for
+// A, verify-rls.mjs fails the owner probe ("A reads 0 own rows").
 
 import { createHmac } from 'node:crypto';
 
