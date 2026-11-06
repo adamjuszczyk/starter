@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { findEmbeds, probeUrl } from './check-embeds.mjs';
@@ -138,6 +138,16 @@ test('--local: a PostgREST that cannot be reached fails the embed (exit 1), neve
   const r = await run(project(WITH_EMBED), '--local', 'http://127.0.0.1:1');
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, /FAIL ERR .*src\/a\.ts:1 orders/);
+});
+
+// The wrapper needs Docker, so only its text is tested here (a tripwire); the behaviour was proven on the real
+// replay: an embed on a table revoked from anon answers OK 200 when probed as postgres and FAIL 401 42501 as anon,
+// and a second foreign key still answers PGRST201 either way.
+test('check-embeds-local.sh probes PostgREST as postgres, not anon (own and signed-in tables revoke everything from anon)', () => {
+  const sh = readFileSync(new URL('./check-embeds-local.sh', import.meta.url), 'utf8');
+  const code = sh.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+  assert.match(code, /-e PGRST_DB_ANON_ROLE=postgres\b/);
+  assert.doesNotMatch(code, /PGRST_DB_ANON_ROLE=anon\b/);
 });
 
 test('a script path with a space still runs main() (a guard comparing raw strings would skip it and exit 0)', async () => {
