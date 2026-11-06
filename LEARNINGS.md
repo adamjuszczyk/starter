@@ -115,8 +115,8 @@ What happened: `check-build.mjs`'s first `skipWaiting` check was a grep, and it 
 Possible change: none to BUILD.md (the break proof did its job); kept as a "Checks that lied" candidate for the stack skill.
 Verdict:
 
-## B9 The 30% rule fired on an S chunk running under its type's figure   status: open
+## B9 The 30% rule stopped the build on an underrun   status: open
 Stage: build (chunk 0)
-What happened: chunk 0 (LIGHT · S) carried the LIGHT figure ($12, 0.67 h) because sizes were not measured apart; it ran ≈ $7.6 and ≈ 0.35 h, more than 30% under, and the rule stopped the build though the build as a whole was on its estimate (chunk 1, the first L, was within).
-Possible change: the estimate carries per-size figures once a build has measured them (B0 measured S ≈ $8, M ≈ $10, L ≈ $13.5), or the rule after chunk 0 applies only to running over.
+What happened: chunk 0 (LIGHT · S) carried the LIGHT figure ($12, 0.67 h) because sizes were not measured apart; it ran ≈ $7.6 and ≈ 0.35 h, 37% under on cost, and the rule stopped the build for a re-estimate card though the build as a whole was on its estimate (chunks 1 and 2 were within). Adam answered "continue as planned" six minutes later.
+Possible change (Adam, 2026-11-06): stop only when a chunk runs **over** by more than 30%; an underrun is re-estimated and reported in the chunk's line, without stopping. Also: the estimate carries per-size figures once a build has measured them (B0: S ≈ $8, M ≈ $10, L ≈ $13.5).
 Verdict:

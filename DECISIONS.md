@@ -18,6 +18,12 @@ Evidence: [short; or a pointer to HISTORY.md]
 ## Tests owed
 *(missing proof only; none so far)*
 
+## 57 The 30% rule stopped the build after chunk 0, which ran under: continue?
+Chunk: 0   Date: 2026-11-06
+Recommendation: continue as planned; the re-estimate is ≈ $165 and ≈ 5.5–6.5 h (planned $170, 8.1 h).
+Answer: Adam, 22:36: a) continue as planned. To-do 1 (Docker Hub secret as "basic"): Adam does it. To-do 2 (no tag to delete; the release ends with his two commands): noted.
+Evidence: CONTEXT.md "Where the build is"; LEARNINGS B9.
+
 ## Decided by the coordinator (technical, under Adam's rule of 2026-11-06)
 *Technical and architecture questions raised during the build, decided by the coordinator by the guiding rule and the lift rule, each with its one-line reason. Same format; "Answer" names who decided. TASKS.md "Decided" 1–49 are the planning session's; these continue from 50.*
 
