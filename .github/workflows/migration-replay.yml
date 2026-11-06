@@ -1,9 +1,12 @@
 # The `migration-replay` check: replays every migration in supabase/migrations,
 # in order, on an empty Supabase Postgres at production's version
-# (supabase/postgres-image), and fails on any error. Runs on every PR into main,
-# not only PRs touching supabase/, so that a ruleset can require it without
-# blocking PRs it would otherwise skip. It touches no Supabase project and uses
-# no secrets.
+# (supabase/postgres-image), and fails on any error. The same replayed database
+# then answers the rest: that every app embed resolves through PostgREST, and
+# (verify-rls) that every table in supabase/access.json does what its kind says
+# to two signed-in users and a signed-out visitor, RLS and grants included.
+# Runs on every PR into main, not only PRs touching supabase/, so that a ruleset
+# can require it without blocking PRs it would otherwise skip. It touches no
+# Supabase project and uses no secrets.
 name: migration-replay
 
 on:
@@ -35,6 +38,12 @@ jobs:
       - name: Migration numbers (scripts/check-migration-order.mjs)
         run: node scripts/check-migration-order.mjs "origin/${{ github.base_ref || 'main' }}"
 
+      # With open sign-up a stranger could create an account and read a firm's
+      # data, so sign-ups must be off while any table is `signed-in`. Reads
+      # supabase/config.toml and supabase/access.json; needs nothing but Node.
+      - name: Sign-ups are off while a table is signed-in (scripts/check-signups.mjs)
+        run: node scripts/check-signups.mjs
+
       - name: Replay every migration (scripts/replay-migrations.sh)
         run: bash scripts/replay-migrations.sh
 
@@ -44,3 +53,28 @@ jobs:
       # pass once the scan has read a source file under src/; no src/ is a fail.
       - name: App embeds resolve through PostgREST (scripts/check-embeds-local.sh)
         run: bash scripts/check-embeds-local.sh
+
+      # verify-rls.mjs imports @supabase/supabase-js, so the next two steps need
+      # node_modules.
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      # Every script's tests (node --test "scripts/*.test.mjs"), among them
+      # verify-rls-list.test.mjs: the access list, the code and the migrations
+      # must agree (SPEC Rule 6). The tests that build throwaway git repos set
+      # their own identity and branch name, so the runner needs no git config.
+      - name: Script tests (npm run check)
+        run: npm run check
+
+      # The self-test, always: the replay also applies scripts/verify-rls-fixture/
+      # (three tables, one per kind, two users with rows) and verify-rls must PASS
+      # every check on it, as the role a hosted project runs (PostgREST connected
+      # as authenticator, pg-safeupdate on). A harness that cannot do that says
+      # nothing about the app's tables.
+      - name: verify-rls proves itself on the fixture (scripts/verify-rls-replay.sh --fixture)
+        run: bash scripts/verify-rls-replay.sh --fixture
+
+      # The app's own access list (supabase/access.json). In the starter: 0
+      # tables, the list empty, no .from() in src/, and that is a pass.
+      - name: verify-rls on the app's access list (scripts/verify-rls-replay.sh)
+        run: bash scripts/verify-rls-replay.sh

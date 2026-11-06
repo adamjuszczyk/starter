@@ -76,6 +76,7 @@ Verdict:
 ## B2 Agent definitions can't be registered mid-session   status: open
 Stage: setup
 What happened: Overload's definitions copied into `~/.claude/agents/` were not picked up ("Agent type 'builder' not found"); every agent is a general-purpose agent told to read its definition file first (DECISIONS 51).
+Later the same session (≈ 23:08, 1.75 h in) the session announced the copied definitions as agent types; from chunk 5 on agents are started as `builder`, `reviewer-data`, `reviewer-light`.
 Possible change: until a build's own `.claude/agents/` is on the default branch when the coordinator starts, BUILD.md says agents run this way, or the definitions are committed before the coordinator's session begins.
 Verdict:
 
@@ -119,4 +120,16 @@ Verdict:
 Stage: build (chunk 0)
 What happened: chunk 0 (LIGHT · S) carried the LIGHT figure ($12, 0.67 h) because sizes were not measured apart; it ran ≈ $7.6 and ≈ 0.35 h, 37% under on cost, and the rule stopped the build for a re-estimate card though the build as a whole was on its estimate (chunks 1 and 2 were within). Adam answered "continue as planned" six minutes later.
 Possible change (Adam, 2026-11-06): stop only when a chunk runs **over** by more than 30%; an underrun is re-estimated and reported in the chunk's line, without stopping. Also: the estimate carries per-size figures once a build has measured them (B0: S ≈ $8, M ≈ $10, L ≈ $13.5).
+Verdict:
+
+## B10 A background agent waited 17 minutes on a permission prompt nobody saw   status: open
+Stage: build (chunk 3)
+What happened: chunk 3's builder issued `rm node_modules` at 22:51; the call never returned (a permission prompt in a background agent). The coordinator noticed the stale transcript at 23:08, stopped the agent and resumed it with the instruction to skip the step; its committed work was intact.
+Possible change: every brief says "don't wait on a permission prompt: work around it inside your worktree or report it" (added from chunk 5 on), and the coordinator checks each running agent's last transcript time at every wake-up.
+Verdict:
+
+## B11 A DATA review's cards became additions before the merge   status: watch
+Stage: build (chunk 3)
+What happened: the reviewer found chunk 3 merge-ready and raised three additions (the app's replay seed, the list test in CI, the anon-privilege check); RULES.md forbids changing shared scripts later in a build, so the coordinator had them built on the branch before the merge (7 minutes) and re-reviewed.
+Possible change: none yet; if it recurs, TASKS's DATA chunks name the check's use by the first app (its seed) in scope.
 Verdict:
