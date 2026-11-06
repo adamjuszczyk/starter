@@ -25,6 +25,7 @@ A stop reaches Adam as a decision card (below), with full reasoning. Overload's 
 Stop and report to Adam (do not route around, do not ask "should I continue without it") when:
 1. **Live verification is required and browser tooling is unavailable.** 1.2: the reviewer's browser must load staging and sign in with the test account; probe it before starting the build (`requestAnimationFrame` probe or a real navigation — never assume from a prior session). Same weight as a failing test. Only exception: Adam, in-session, told plainly what won't be verified, overrides it for that step.
 3. **A login is needed** (Supabase dashboard, the app). Adam signs in himself; passwords, tokens and session JWTs are never entered, typed, printed or recorded. If a tool or classifier refuses to return a token, stop and ask Adam (he once chose to reconstruct the payload from documented data instead); don't hunt for a workaround, and don't assume last session's extraction technique still works.
+4. **Anomalous data:** an investigation turning up real corrupted data broader than known — report, don't push over it.
 5. **A found problem meets a deploy gate.** A brief that says "stop and report rather than ship over a problem" is not cleared by fixing it yourself; ask in-session before deploying.
 6. **Anything irreversible or spending real money:** deleting or mutating real rows, any write to production for live testing (needs an explicit go-ahead first; the permission classifier may also block a delete — ask again rather than retry).
 8. **`node scripts/check-migration.mjs` exits 1 or 2 at the release, or on a hotfix to the default branch:** don't merge; Adam gets one blocking DECISIONS.md decision covering every flagged migration. During a build with staging a flag does **not** stop: merge into staging and log it under "For the release".
@@ -127,6 +128,7 @@ The vibe-check tour, the release checklist and any procedure Adam runs by hand r
 BUILD.md 2.1's, for every build:
 - **SQL.** A database console bypasses RLS. Every live query filters explicitly to Adam's own user_id. If another user's data appears, stop: that's a query bug. Never store another user's data anywhere persistent.
 - **Migrations.** Forward-only. Applied migrations verified against local source. Destructive ones always come to Adam.
+- **AI features.** Deterministic work in tested pure functions. The LLM gets judgment only, fed pre-computed data. Real-data dry run before any AI write touching real history.
 - **Credentials.** Agents never get production database credentials. Never provision broad access for a narrow one-time task; Adam does the narrow action himself.
 - **Records.** Analyses, logs and other records are never deleted by agents, migrations or regenerations. Only the user's own explicit delete removes one.
 - **Backups.** Before every release, and before anything destructive.
