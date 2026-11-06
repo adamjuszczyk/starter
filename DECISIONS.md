@@ -68,3 +68,39 @@ Chunk: 3 (added to its workflow edit)   Date: 2026-11-06
 Recommendation: one step `node scripts/check-signups.mjs` in `migration-replay.yml`.
 Answer: coordinator. Reason: the B0 review found the check ran only under `npm run check`; a check that guards client data should run on every PR.
 Evidence: B0 review, chunk 2.
+
+## 58 verify-rls's CI needs `npm ci`
+Chunk: 3   Date: 2026-11-06
+Recommendation: a separate `npm ci` step in `migration-replay.yml`.
+Answer: coordinator. Reason: verify-rls imports supabase-js; the smallest change.
+Evidence: chunk 3 report, card 1.
+
+## 59 verify-rls counts with a GET and `limit(0)`, never HEAD
+Chunk: 3   Date: 2026-11-06
+Recommendation: `select(col, {count: 'exact'}).limit(0)`: the same server-side exact count, zero rows, the error code intact.
+Answer: coordinator. Reason: a refused HEAD reaches supabase-js with no code (status 401, code null), so 42501 can't be read (Decided 40) and every correct refusal would FAIL; measured by builder and reviewer.
+Evidence: chunk 3 report, card 2; review `head-vs-limit0`.
+
+## 60 Public tables are also probed as a signed-in user
+Chunk: 3   Date: 2026-11-06
+Recommendation: keep the extra probe (A reads ≥ 1 row).
+Answer: coordinator. Reason: SPEC "rows expected for everyone"; break 11 (select revoked from authenticated) is caught only by it.
+Evidence: chunk 3 report, card 4; review.
+
+## 61 The app's replay seed for verify-rls
+Chunk: 3 (follow-up before merge)   Date: 2026-11-06
+Recommendation: `verify-rls-replay.sh` (app mode) applies an optional `supabase/verify-rls-seed.sql` after the migrations, as postgres, one transaction (users A and B with `replay-tokens.mjs`'s ids, rows per table); without it a non-empty list fails loudly.
+Answer: coordinator. Reason: RULES.md forbids changing a shared script during a build, so leaving it to the first app's first DATA chunk would stop that build on a card.
+Evidence: chunk 3 review, card A; follow-up 77785a0.
+
+## 62 The script tests run in CI
+Chunk: 3 (follow-up)   Date: 2026-11-06
+Recommendation: one step `npm run check` after `npm ci` in `migration-replay.yml`.
+Answer: coordinator. Reason: `verify-rls-list.test.mjs` (SPEC Rule 6's guard: every table the code reads is in the list) is the only check that catches an unlisted table, which verify-rls itself simply never probes; the same reason as 56.
+Evidence: chunk 3 review, card B; 175/175 under a bare environment.
+
+## 63 verify-rls fails an own or signed-in table that `anon` holds any privilege on
+Chunk: 3 (follow-up)   Date: 2026-11-06
+Recommendation: the catalog reads `has_table_privilege('anon', …)` (direct, PUBLIC and default privileges) and fails such a table; it fails closed without the field.
+Answer: coordinator. Reason: Decided 39 enforced mechanically; a migration that leans on the default privileges passes every probe (the policies hide the rows) and only this catches it.
+Evidence: chunk 3 review, card C; follow-up break (no `revoke all` → catalog FAIL on fx_own and fx_shared, every probe PASS).

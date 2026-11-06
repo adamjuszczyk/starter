@@ -2,6 +2,10 @@
 
 The record of finished work and what CONTEXT.md no longer needs to say (BUILD.md 2.2: finished work and build logs live here; CONTEXT.md holds only the current state, and pruning it is a move into this file). Newest entry first. Read it only to trace why something is the way it is.
 
+## 2026-11-06 — chunk 3 (verify-rls on the replay)
+
+Builder 22:12–22:51 (39.5 min), then a 17-minute stall on a permission prompt (LEARNINGS B10), pushed 23:12, rebased by itself on `main`. First proof both runs as Facts 1; ten break proofs plus three extras. Opus review 23:12–23:30: merge-ready, three cards, decided (a) and built as a follow-up 23:33–23:40 (DECISIONS 61–63), re-checked; merged as PR #5.
+
 ## 2026-11-06 — the build, chunks 0–2 (coordinator session, Starter environment)
 
 **Setup (21:21–21:35 UTC).** The setup check is in CONTEXT.md "Repo facts". The throwaway tag did not land, so the release is Adam's two commands. Docker Hub through the token fails on the scheme; the mirror carried both images. The meter is derived (DECISIONS 50). Agents run as general-purpose agents reading their Overload definitions (DECISIONS 51).
