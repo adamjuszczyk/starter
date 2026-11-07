@@ -2,6 +2,12 @@
 
 The record of finished work and what CONTEXT.md no longer needs to say (BUILD.md 2.2: finished work and build logs live here; CONTEXT.md holds only the current state, and pruning it is a move into this file). Newest entry first. Read it only to trace why something is the way it is.
 
+## 2026-11-07 — Adam's answers to chunk 11's questions
+
+At about 10:50 (DECISIONS 82–84): any failure of the server's sign-out signs out on this device; offline skips the server; the app tests run in CI. Chunk 12 builds all three; SPEC "Screens" and the release notes amended; NEXT.md's CI leftover removed.
+
+**No longer true, moved here from CONTEXT.md.** "**Built and checked, the offline sign-out fixed; the tag is Adam's (2026-11-07 10:50 UTC).** Chunks 0–11 and the release step are merged into `main` (PRs #1–#14, squash). Chunk 11 (Adam's answer, DECISIONS 77): with no connection, sign-out removes the stored session on this device, supabase-js signs…" and "**Waiting on Adam:** the tag. Two questions from chunk 11, built as noted, neither blocks the tag: (1) a sign-out the server answers with an error (500, 502, 429) still leaves the person signed in on this device, with no message (supabase-js keeps the session for any answer but 401/403/404); recomme…"
+
 ## 2026-11-07 — chunk 11 (sign-out with no connection)
 
 Builder 10:02–10:36 (34 min) plus a skill follow-up: probed supabase-js 2.110.0 first and found `signOut({ scope: 'local' })` still asks the server and keeps the session on failure, so the device sign-out removes the stored session first (DECISIONS 81; SPEC's wording and the release notes corrected; LEARNINGS B17). Two questions for Adam (answered server errors; the 25-second wait with an expired token). Review 10:40–10:44: merge-ready, the probe re-run on the real client. Merged as PR #14. ≈ $14 on the meter.

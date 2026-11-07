@@ -49,6 +49,24 @@ Recommendation: re-save the `auth.docker.io` network secret on the Starter envir
 Answer: Adam's reply left the status unfilled ("[done / still to do]"). Checked by the coordinator at 10:00: `auth.docker.io` still answers 500 "unsupported authentication scheme: Bearer" in this session, so it reads as still to do (or saved after this session's network was set). Not blocking: `mirror.gcr.io` carried every pull.
 Evidence: CONTEXT.md "Repo facts"; LEARNINGS B3.
 
+## 82 Any failure of the server's sign-out signs out on this device
+Chunk: 12   Date: 2026-11-07
+Recommendation: the coordinator's (chunk 11, card 2): sign out on this device for any failure, as for no connection.
+Answer: Adam, 2026-11-07: yes. Any failure of the server sign-out (no connection, 5xx, 429, anything but success) signs out on this device: the stored session removed, the cache cleared, the sign-in screen shown. Reason: the shared-computer case is the same whatever the failure. Test: a server error leaves no session on the device. SPEC "Screens" amended.
+Evidence: chunk 11 report, card 2 (supabase-js keeps the session for any answer but 401/403/404).
+
+## 83 Offline, the sign-out skips the server
+Chunk: 12   Date: 2026-11-07
+Recommendation: the coordinator's (chunk 11, card 3): when `navigator.onLine` is false, skip the server.
+Answer: Adam, 2026-11-07: yes. When the browser reports itself offline, skip the server and sign out on the device at once (no ≈ 25-second refresh retries with an expired token). Test: offline with Wi-Fi reported off makes no request to the server. SPEC "Screens" amended.
+Evidence: chunk 11 report, card 3 (25.4 s in Node, 25.5 s in Chromium).
+
+## 84 The app tests run in CI on every PR
+Chunk: 12   Date: 2026-11-07
+Recommendation: NEXT.md's leftover: CI runs the script tests but not vitest.
+Answer: Adam, 2026-11-07: the app tests run in CI on every PR, beside the script tests (`npm test`, quiet output). Reason: the offline sign-out's proof is an app test; without CI a library upgrade in any app made from the starter can undo it unnoticed. Public repos run Actions free; a private repo's free minutes cover it.
+Evidence: NEXT.md "Left over from 0.1"; chunk 11 review.
+
 ## Decided by the coordinator (technical, under Adam's rule of 2026-11-06)
 *Technical and architecture questions raised during the build, decided by the coordinator by the guiding rule and the lift rule, each with its one-line reason. Same format; "Answer" names who decided. TASKS.md "Decided" 1–49 are the planning session's; these continue from 50.*
 
