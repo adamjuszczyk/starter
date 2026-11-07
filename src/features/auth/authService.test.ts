@@ -124,10 +124,11 @@ describe('signIn', () => {
   })
 })
 
-// SPEC Screens as amended 2026-11-07 (DECISIONS 77): with no connection the person is signed out on this device anyway; any other failure is
-// thrown as it came. supabase-js's `signOut({ scope: 'local' })` still asks the server and keeps the session when it gets no answer, so the
-// service removes the stored session first and then calls it (authService.signOut.test.ts runs that on the real client). `asked` records, for
-// each call to supabase-js's sign-out, its scope and whether the session was still stored on the device at that moment.
+// SPEC Screens as amended 2026-11-07 (DECISIONS 77, 82, 83): if the server's sign-out fails in any way the person is signed out on this device
+// anyway, and when the browser reports itself offline the server is not asked at all. supabase-js's `signOut({ scope: 'local' })` still asks
+// the server and keeps the session when that fails, so the service removes the stored session first and then calls it
+// (authService.signOut.test.ts runs that on the real client). `asked` records, for each call to supabase-js's sign-out, its scope and whether
+// the session was still stored on the device at that moment.
 describe('signOut', () => {
   const KEY = 'sb-test-auth-token'
   const noAnswer = () => new AuthRetryableFetchError('Failed to fetch', 0)
@@ -163,10 +164,15 @@ describe('signOut', () => {
     expect(localStorage.getItem(KEY)).not.toBeNull()
   })
 
+  // Every way the server's sign-out can fail, none of them told apart (DECISIONS 82): the person is signed out on this device whatever the failure.
   it.each([
-    ['a resolved `AuthRetryableFetchError` with status 0 (the request got no answer)', { error: new AuthRetryableFetchError('Failed to fetch', 0) }],
-    ['a thrown fetch `TypeError`', { throws: new TypeError('Failed to fetch') }],
-  ])('no connection, %s: the stored session is removed, supabase-js is asked to sign out with scope "local", and it resolves', async (_what, first) => {
+    ['no connection, a resolved `AuthRetryableFetchError` with status 0', { error: new AuthRetryableFetchError('Failed to fetch', 0) }],
+    ['no connection, a thrown fetch `TypeError`', { throws: new TypeError('Failed to fetch') }],
+    ['a server error, an `AuthRetryableFetchError` with its 502 status', { error: new AuthRetryableFetchError('Bad Gateway', 502) }],
+    ['a rate limit, an `AuthApiError` with 429', { error: new AuthApiError('Too many requests', 429, 'over_request_rate_limit') }],
+    ['an answer supabase-js could not read, an `AuthUnknownError`', { error: new AuthUnknownError('Unexpected', new Error('x')) }],
+    ['a thrown error that is not a failed fetch', { throws: new Error('boom') }],
+  ])('the server\'s sign-out fails with %s: the stored session is removed, supabase-js is asked to sign out with scope "local", and it resolves', async (_what, first) => {
     signOutGives(first)
     await expect(signOut()).resolves.toBeUndefined()
     // The normal sign-out first, with the session still stored; then the local one, after the stored session was taken out.
@@ -175,36 +181,33 @@ describe('signOut', () => {
     expect(localStorage.getItem(KEY)).toBeNull()
   })
 
-  it('no connection: `navigator.onLine === false` makes any error that is not an answer one (an error that is not even a failed fetch)', async () => {
-    onLine = false
-    signOutGives({ error: new AuthUnknownError('Unexpected', new Error('x')) })
-    await expect(signOut()).resolves.toBeUndefined()
-    expect(asked).toEqual(normalThenLocal)
-    expect(localStorage.getItem(KEY)).toBeNull()
-  })
-
-  it('no connection removes this client\'s session and nothing else the device holds (the theme, another app\'s session)', async () => {
+  it('a failed sign-out on this device removes this client\'s session and nothing else the device holds (the theme, another app\'s session)', async () => {
     localStorage.setItem('theme', 'dark')
     localStorage.setItem('sb-other-auth-token', 'another app\'s session')
-    signOutGives({ error: noAnswer() })
+    signOutGives({ error: new AuthRetryableFetchError('Bad Gateway', 502) })
     await expect(signOut()).resolves.toBeUndefined()
     expect(localStorage.getItem(KEY)).toBeNull()
     expect(localStorage.getItem('theme')).toBe('dark')
     expect(localStorage.getItem('sb-other-auth-token')).toBe('another app\'s session')
   })
 
-  it.each([
-    ['a server error (`AuthRetryableFetchError` with its 502 status)', { error: new AuthRetryableFetchError('Bad Gateway', 502) }],
-    ['a rate limit (`AuthApiError`, 429)', { error: new AuthApiError('Too many requests', 429, 'over_request_rate_limit') }],
-    ['an answer supabase-js could not read (`AuthUnknownError`)', { error: new AuthUnknownError('Unexpected', new Error('x')) }],
-    ['a thrown error that is not a failed fetch', { throws: new Error('boom') }],
-  ])('a server that answered with an error, %s, is not "no connection": it is thrown as it came, once, and the session stays on the device', async (_what, first) => {
-    signOutGives(first)
-    const thrown = 'throws' in first ? first.throws : first.error
-    await expect(signOut()).rejects.toBe(thrown)
-    expect(asked).toEqual([{ scope: undefined, stored: true }])
-    expect(auth.signOut).toHaveBeenCalledTimes(1)
-    expect(localStorage.getItem(KEY)).not.toBeNull()
+  // DECISIONS 83: with expired tokens supabase-js's own sign-out spends about 25 s refreshing before it fails, so with the browser offline it is
+  // not asked at all. authService.signOut.test.ts counts the requests on the real client.
+  it('the browser reports itself offline: the server is not asked, the stored session is removed, and supabase-js is asked once, with scope "local"', async () => {
+    onLine = false
+    signOutGives()
+    await expect(signOut()).resolves.toBeUndefined()
+    expect(auth.signOut).toHaveBeenCalledExactlyOnceWith({ scope: 'local' })
+    expect(asked).toEqual([{ scope: 'local', stored: false }])
+    expect(localStorage.getItem(KEY)).toBeNull()
+  })
+
+  it('the browser reports itself offline and the sign-out on this device fails: its error is thrown, with the server never asked', async () => {
+    onLine = false
+    const failure = noAnswer()
+    signOutGives({ error: failure })
+    await expect(signOut()).rejects.toBe(failure)
+    expect(asked).toEqual([{ scope: 'local', stored: false }])
   })
 
   it('when the sign-out on this device fails too, its error is thrown: the person is still signed in and the caller must not act as if they were out', async () => {
@@ -212,6 +215,12 @@ describe('signOut', () => {
     signOutGives({ error: noAnswer() }, { error: second })
     await expect(signOut()).rejects.toBe(second)
     expect(asked).toEqual(normalThenLocal)
+  })
+
+  it('a thrown error from the sign-out on this device is thrown as it came', async () => {
+    const thrown = new Error('storage failed under supabase-js')
+    signOutGives({ error: new AuthRetryableFetchError('Bad Gateway', 502) }, { throws: thrown })
+    await expect(signOut()).rejects.toBe(thrown)
   })
 
   it('storage the page may not touch: the removal is skipped without a throw, the local sign-out is still asked for, and its error is what is thrown', async () => {

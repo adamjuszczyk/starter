@@ -41,8 +41,8 @@ function isFetchFailure(error: unknown): boolean {
 }
 
 /**
- * The server could not be reached: the request got no answer, or the device itself says it has no connection (DECISIONS 65). One rule for a
- * sign-in, which shows `offline`, and a sign-out, which then signs out on this device alone.
+ * The server could not be reached: the request got no answer, or the device itself says it has no connection (DECISIONS 65). The sign-in's rule
+ * for showing `offline`. (A sign-out does not ask: it signs out on this device after any failure, DECISIONS 82.)
  */
 function hasNoAnswer(error: unknown): boolean {
   return isFetchFailure(error) || navigator.onLine === false
@@ -66,44 +66,53 @@ export async function signIn(email: string, password: string): Promise<void> {
   }
 }
 
-/** supabase-js's own sign-out. Resolves with what went wrong, or null; a thrown error is taken the same way as a resolved `{ error }`. */
-async function askServerToSignOut(): Promise<{ error: unknown } | null> {
+/**
+ * supabase-js's own sign-out, which asks the server to end the session. True when it failed, however: a resolved `{ error }` (no connection, a
+ * server error, a rate limit: anything but success) or a thrown error. supabase-js keeps the session when it fails (an answer of 401, 403 or 404
+ * it takes as "already signed out", and removes the session itself).
+ */
+async function serverSignOutFailed(): Promise<boolean> {
   try {
     const { error } = await supabase.auth.signOut()
-    return error ? { error } : null
-  } catch (error) {
-    return { error }
+    return Boolean(error)
+  } catch {
+    return true
   }
 }
 
 /**
  * Ends the session on this device without the server. supabase-js's `signOut({ scope: 'local' })` is not that by itself: it still asks the
- * server first, and with no answer it returns the error and keeps the session, as the default scope does (auth-js 2.110.0, `_signOut`;
+ * server first, and when that fails it returns the error and keeps the session, as the default scope does (auth-js 2.110.0, `_signOut`;
  * authService.signOut.test.ts shows it on the real client). So the stored session is removed first. With none stored, `signOut({ scope:
  * 'local' })` has nothing to ask the server about and does the rest itself: it removes what else it keeps and tells the app (SIGNED_OUT),
  * which is how `useAuth` clears the cache and the sign-in screen shows, as after any sign-out. The session stays valid on the server until it
- * expires: with no connection there is no way to end it there.
+ * expires: when the server cannot or will not end it, there is no way to end it there.
+ *
+ * It fails only when the session will not leave the device: storage the browser does not let the page remove from (localStorage blocked, so
+ * supabase-js holds the session in memory), or storage that fails under supabase-js as it removes its own keys. supabase-js then still holds
+ * the session, asks the server as any sign-out does, and returns that error, which is thrown: the person is still signed in.
  */
 async function signOutOnThisDevice(): Promise<void> {
   try {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
   } catch {
     // Storage the browser will not let the page touch: supabase-js keeps the session in memory then, and the local sign-out below finds it,
-    // asks the server and fails as the first sign-out did. The person is still signed in, and this throws.
+    // asks the server and, with the server failing, returns that error. The person is still signed in, and this throws.
   }
   const { error } = await supabase.auth.signOut({ scope: 'local' })
   if (error) throw error
 }
 
 /**
- * Signs out. The server is asked to end the session first, as supabase-js does it. When the server cannot be reached (the same "no answer"
- * as a sign-in's `offline`) the person is signed out on this device anyway and this resolves: on a shared computer a sign-out that silently
- * does nothing leaves the next person in someone else's account (SPEC Screens as amended 2026-11-07, DECISIONS 77). Any other failure, a
- * server that answered with an error, is thrown as it came: the session is still on this device, so the caller must not act as if it ended.
+ * Signs out. If the server's sign-out fails in any way (no connection, a server error, a rate limit: anything but success) the person is
+ * signed out on this device anyway and this resolves, and when the browser reports itself offline the server is not asked at all: on a shared
+ * computer a sign-out that silently does nothing leaves the next person in someone else's account, whatever the failure (SPEC Screens as
+ * amended 2026-11-07, DECISIONS 77, 82, 83). It throws only when the sign-out on this device fails too (`signOutOnThisDevice` says when): the
+ * person is still signed in then, and the caller must not act as if they were out.
  */
 export async function signOut(): Promise<void> {
-  const failure = await askServerToSignOut()
-  if (!failure) return
-  if (!hasNoAnswer(failure.error)) throw failure.error
-  await signOutOnThisDevice()
+  // Offline, the server cannot be reached and asking it would only wait: with an access token that has expired, supabase-js tries to refresh it
+  // first and retries for about 25 s before it gives up and returns the error.
+  if (navigator.onLine === false) return signOutOnThisDevice()
+  if (await serverSignOutFailed()) await signOutOnThisDevice()
 }

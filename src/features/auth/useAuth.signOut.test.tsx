@@ -3,9 +3,10 @@
 // first, then the cache is cleared, then Dexie's tables are wiped). The starter has no Dexie and its sign-out wipes nothing but the cache, so
 // this keeps the order and the cache, and adds what the starter's sign-out also decides: a user change clears the cache (so data never leaks
 // from one account to the next), and a sign-out that fails clears nothing and leaves the person signed in (TASKS.md, chunk 4). Since SPEC
-// Screens' amendment of 2026-11-07 (DECISIONS 77) a sign-out with no connection is not one that fails: the person is signed out on this device
-// (authService.signOut), and the provider does what it does after any sign-out. The mock tells the listener, as the real client does once it has
-// removed a session; authService.signOut.test.ts and App.signOut.test.tsx run it on the real client.
+// Screens' amendment of 2026-11-07 (DECISIONS 77, 82, 83) a sign-out whose server side fails in any way, or that starts with the browser offline,
+// is not one that fails: the person is signed out on this device (authService.signOut), and the provider does what it does after any
+// sign-out; only a sign-out on this device that fails too leaves the person signed in. The mock tells the listener, as the real client does
+// once it has removed a session; authService.signOut.test.ts and App.signOut.test.tsx run it on the real client.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
@@ -80,18 +81,6 @@ describe('sign-out', () => {
     expect(calls.order).toEqual(['auth.signOut', 'queryClient.clear'])
   })
 
-  it('a sign-out the server answered with an error (the session is kept) clears nothing, leaves the person signed in, and the pending state goes', async () => {
-    calls.signOutResult = { error: new AuthRetryableFetchError('Bad Gateway', 502) }
-    const { result } = await mount()
-    await act(async () => {
-      await result.current.signOut()
-    })
-
-    expect(calls.order).toEqual(['auth.signOut'])
-    expect(result.current.user).toEqual({ id: 'u1' })
-    expect(result.current.signingOut).toBe(false)
-  })
-
   it('is pending while the server has not answered, for every reader of the context, and not after', async () => {
     let answer: () => void = () => {}
     calls.hold = new Promise<void>((resolve) => {
@@ -115,11 +104,18 @@ describe('sign-out', () => {
   })
 })
 
-describe('sign-out with no connection: the person is signed out on this device', () => {
+// SPEC Screens as amended 2026-11-07 (DECISIONS 82, 83): whatever the failure of the server's sign-out, the person is signed out on this device,
+// and when the browser reports itself offline the server is not asked. The provider runs the same lines in every case.
+describe('sign-out when the server\'s sign-out fails: the person is signed out on this device', () => {
+  const FAILURES: [string, () => unknown][] = [
+    ['no connection (`AuthRetryableFetchError`, status 0)', () => new AuthRetryableFetchError('Failed to fetch', 0)],
+    ['a server error (`AuthRetryableFetchError`, 502)', () => new AuthRetryableFetchError('Bad Gateway', 502)],
+    ['a rate limit (`AuthApiError`, 429)', () => new AuthApiError('Too many requests', 429, 'over_request_rate_limit')],
+  ]
   const noAnswer = () => new AuthRetryableFetchError('Failed to fetch', 0)
 
-  it('runs the lines of any sign-out in the same order: the session ends, then the query cache is cleared, and nothing else', async () => {
-    calls.signOutResult = { error: noAnswer() }
+  it.each(FAILURES)('%s: runs the lines of any sign-out in the same order: the session ends, then the query cache is cleared, and nothing else', async (_what, failure) => {
+    calls.signOutResult = { error: failure() }
     // Nothing tells the listener here, so the clear after the session ended is the only one: the line under test.
     calls.announceLocal = false
     const { result } = await mount()
@@ -131,8 +127,8 @@ describe('sign-out with no connection: the person is signed out on this device',
     expect(result.current.signingOut).toBe(false)
   })
 
-  it('the person lands on the sign-in screen: the session becomes null (SIGNED_OUT reaches the provider, as it does online), the cache is cleared, the pending state goes', async () => {
-    calls.signOutResult = { error: noAnswer() }
+  it.each(FAILURES)('%s: the person lands on the sign-in screen: the session becomes null (SIGNED_OUT reaches the provider, as it does online), the cache is cleared, the pending state goes', async (_what, failure) => {
+    calls.signOutResult = { error: failure() }
     const { result } = await mount()
     expect(result.current.user).toEqual({ id: 'u1' })
 
@@ -168,7 +164,7 @@ describe('sign-out with no connection: the person is signed out on this device',
     expect(calls.order).toEqual(['auth.signOut'])
     expect(result.current.signingOut).toBe(true)
 
-    // It answers with nothing (the request failed): the sign-out on this device is under way, and the state has not gone.
+    // It answers with a failure: the sign-out on this device is under way, and the state has not gone.
     await act(async () => {
       answer()
       await waitFor(() => expect(calls.order).toEqual(['auth.signOut', 'auth.signOut(local)']))
@@ -184,20 +180,8 @@ describe('sign-out with no connection: the person is signed out on this device',
     expect(result.current.user).toBeNull()
   })
 
-  it('a device that says it is offline makes an error that is not even a failed fetch "no connection" (the same rule as the sign-in\'s)', async () => {
-    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
-    calls.signOutResult = { error: new AuthApiError('Too many requests', 429, 'over_request_rate_limit') }
-    const { result } = await mount()
-    await act(async () => {
-      await result.current.signOut()
-    })
-
-    expect(calls.order).toEqual(['auth.signOut', 'auth.signOut(local)', 'queryClient.clear', 'queryClient.clear'])
-    expect(result.current.user).toBeNull()
-  })
-
-  it('a sign-out on this device that fails too clears nothing and leaves the person signed in', async () => {
-    calls.signOutResult = { error: noAnswer() }
+  it('a sign-out on this device that fails too clears nothing and leaves the person signed in (the only way a sign-out now fails)', async () => {
+    calls.signOutResult = { error: new AuthRetryableFetchError('Bad Gateway', 502) }
     calls.localResult = { error: noAnswer() }
     calls.announceLocal = false
     const { result } = await mount()
@@ -206,6 +190,71 @@ describe('sign-out with no connection: the person is signed out on this device',
     })
 
     expect(calls.order).toEqual(['auth.signOut', 'auth.signOut(local)'])
+    expect(result.current.user).toEqual({ id: 'u1' })
+    expect(result.current.signingOut).toBe(false)
+  })
+})
+
+describe('sign-out when the browser reports itself offline: the server is not asked', () => {
+  beforeEach(() => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+  })
+
+  it('runs the lines of any sign-out without the first one: the session ends on this device, then the query cache is cleared, and nothing else', async () => {
+    calls.announceLocal = false
+    const { result } = await mount()
+    await act(async () => {
+      await result.current.signOut()
+    })
+
+    expect(calls.order).toEqual(['auth.signOut(local)', 'queryClient.clear'])
+    expect(result.current.signingOut).toBe(false)
+  })
+
+  it('the person lands on the sign-in screen: the session becomes null, the cache is cleared, the pending state goes', async () => {
+    const { result } = await mount()
+    expect(result.current.user).toEqual({ id: 'u1' })
+
+    await act(async () => {
+      await result.current.signOut()
+    })
+
+    expect(calls.order).toEqual(['auth.signOut(local)', 'queryClient.clear', 'queryClient.clear'])
+    expect(result.current.user).toBeNull()
+    expect(result.current.signingOut).toBe(false)
+  })
+
+  it('is pending while the sign-out on this device runs, and not after', async () => {
+    let finishLocal: () => void = () => {}
+    calls.holdLocal = new Promise<void>((resolve) => {
+      finishLocal = resolve
+    })
+    const { result } = await mount()
+
+    let finished: Promise<void> = Promise.resolve()
+    act(() => {
+      finished = result.current.signOut()
+    })
+    expect(result.current.signingOut).toBe(true)
+    expect(result.current.user).toEqual({ id: 'u1' })
+
+    await act(async () => {
+      finishLocal()
+      await finished
+    })
+    expect(result.current.signingOut).toBe(false)
+    expect(result.current.user).toBeNull()
+  })
+
+  it('a sign-out on this device that fails clears nothing and leaves the person signed in', async () => {
+    calls.localResult = { error: new AuthRetryableFetchError('Failed to fetch', 0) }
+    calls.announceLocal = false
+    const { result } = await mount()
+    await act(async () => {
+      await result.current.signOut()
+    })
+
+    expect(calls.order).toEqual(['auth.signOut(local)'])
     expect(result.current.user).toEqual({ id: 'u1' })
     expect(result.current.signingOut).toBe(false)
   })

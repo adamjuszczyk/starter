@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// THE proof of SPEC Screens as amended 2026-11-07 (DECISIONS 77): a sign-out with no connection leaves no session on the device. Nothing here
+// THE proof of SPEC Screens as amended 2026-11-07 (DECISIONS 77, 82, 83): a sign-out leaves no session on the device when the server cannot be
+// reached, when it answers with an error, and when the browser reports itself offline (then the server is not asked at all). Nothing here
 // is stood in for but the network. The client is the starter's own (src/lib/supabase.ts, loaded for real with a project URL and key set here, not
 // a copy of it), the sign-out is the real `authService.signOut`, and the device is the browser's storage, which in jsdom is an in-memory
 // localStorage and is what supabase-js reads by default in a browser. `fetch` is the one fake: it fails the way a browser's does with no
@@ -95,8 +96,8 @@ afterEach(() => {
   localStorage.clear()
 })
 
-describe('what supabase-js does with no connection (why the service takes the stored session out first)', () => {
-  it('its sign-out, whatever the scope, asks the server, gets no answer, returns the error and KEEPS the session', async () => {
+describe('what supabase-js does when its sign-out fails (why the service takes the stored session out first)', () => {
+  it('with no connection its sign-out, whatever the scope, asks the server, gets no answer, returns the error and KEEPS the session', async () => {
     for (const scope of ['global', 'local'] as const) {
       storeSession(3600)
       network.requests.length = 0
@@ -109,6 +110,28 @@ describe('what supabase-js does with no connection (why the service takes the st
       expect(localStorage.getItem(AUTH_STORAGE_KEY), scope).not.toBeNull()
       expect((await client.auth.getSession()).data.session, scope).not.toBeNull()
     }
+  })
+
+  it.each([[500], [502], [429]])('an answer of %i is returned as an error and the session is KEPT, in either scope', async (status) => {
+    for (const scope of ['global', 'local'] as const) {
+      network.respond = answer(status, { message: 'The server said no', code: 'over_request_rate_limit' })
+      storeSession(3600)
+
+      const { error } = await client.auth.signOut({ scope })
+
+      expect((error as { status?: number } | null)?.status, scope).toBe(status)
+      expect(localStorage.getItem(AUTH_STORAGE_KEY), scope).not.toBeNull()
+    }
+  })
+
+  it.each([[401], [403], [404]])('an answer of %i it takes as "already signed out": no error, and it removes the session itself', async (status) => {
+    network.respond = answer(status, { message: 'No such session', code: 'session_not_found' })
+    storeSession(3600)
+
+    const { error } = await client.auth.signOut()
+
+    expect(error).toBeNull()
+    expect(onDevice()).toEqual([])
   })
 
   it('with an expired access token it cannot even refresh: getSession() reads null while the whole session is still stored', async () => {
@@ -129,7 +152,8 @@ describe('what supabase-js does with no connection (why the service takes the st
   })
 })
 
-describe('signOut with no connection: the person is signed out on this device', () => {
+// The browser does not say it is offline here (`navigator.onLine` is true in jsdom): Wi-Fi up, the internet gone, a request that fails.
+describe('signOut when the server cannot be reached: the person is signed out on this device', () => {
   it('a stored session: resolves; getSession() reads null and the storage holds nothing; the server was asked once and the device sign-out asked nothing', async () => {
     storeSession(3600)
     // The control: the client reads the stored session under the key it was given, so the empty storage below is the sign-out's doing and not
@@ -168,16 +192,6 @@ describe('signOut with no connection: the person is signed out on this device', 
     expect(events[events.length - 1]).toBe('SIGNED_OUT')
   })
 
-  it('the device says it is offline and the request still fails: the same', async () => {
-    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
-    storeSession(3600)
-
-    await expect(signOut()).resolves.toBeUndefined()
-
-    expect((await client.auth.getSession()).data.session).toBeNull()
-    expect(onDevice()).toEqual([])
-  })
-
   it('the rest of what the client keeps goes too: its code verifier and its stored user', async () => {
     storeSession(3600)
     localStorage.setItem(`${AUTH_STORAGE_KEY}-code-verifier`, 'verifier')
@@ -200,6 +214,84 @@ describe('signOut with no connection: the person is signed out on this device', 
   })
 })
 
+// DECISIONS 82: supabase-js keeps the session for an answer of 500, 502 or 429, and a sign-out that left the person signed in on a shared
+// computer is what Adam does not want, whatever the failure.
+describe('signOut when the server answered with an error: the person is signed out on this device too', () => {
+  it.each([[500], [502], [429]])('an answer of %i: resolves; getSession() reads null and the storage holds nothing; the server was asked once', async (status) => {
+    network.respond = answer(status, { message: 'The server said no', code: 'over_request_rate_limit' })
+    storeSession(3600)
+    expect((await client.auth.getSession()).data.session?.user.email).toBe('anna@firma.pl')
+    expect(onDevice()).toHaveLength(1)
+
+    await expect(signOut()).resolves.toBeUndefined()
+
+    expect((await client.auth.getSession()).data.session).toBeNull()
+    expect(onDevice()).toEqual([])
+    // The server's sign-out is the only request: the sign-out on this device has no session left to ask about.
+    expect(network.requests).toEqual(['POST /auth/v1/logout?scope=global'])
+    expect(events[events.length - 1]).toBe('SIGNED_OUT')
+  })
+
+  it.each([[401], [403], [404]])('an answer of %i is supabase-js\'s own "already signed out": the session ends in its own sign-out, and the one request is all there is', async (status) => {
+    network.respond = answer(status, { message: 'No such session', code: 'session_not_found' })
+    storeSession(3600)
+
+    await expect(signOut()).resolves.toBeUndefined()
+
+    expect(onDevice()).toEqual([])
+    expect(network.requests).toEqual(['POST /auth/v1/logout?scope=global'])
+  })
+})
+
+// DECISIONS 83: with the browser reporting itself offline the server is not asked at all. With an access token that has expired, supabase-js's
+// own sign-out would spend about 25 s refreshing it (eight failed requests, measured in Chromium) before it failed.
+describe('signOut when the browser reports itself offline: the server is not asked', () => {
+  beforeEach(() => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+  })
+
+  it('a stored session: resolves with no request at all; getSession() reads null and the storage holds nothing', async () => {
+    storeSession(3600)
+    expect((await client.auth.getSession()).data.session?.user.email).toBe('anna@firma.pl')
+
+    await expect(signOut()).resolves.toBeUndefined()
+
+    expect(network.requests).toEqual([])
+    expect((await client.auth.getSession()).data.session).toBeNull()
+    expect(onDevice()).toEqual([])
+    expect(events[events.length - 1]).toBe('SIGNED_OUT')
+  })
+
+  it('a stored session whose access token has expired: no refresh, no retries, no wait: it is done before any timer has run', async () => {
+    vi.useFakeTimers()
+    storeSession(-3600)
+    expect(onDevice()).toHaveLength(1)
+
+    const outcome = signOut().then(
+      () => 'resolved',
+      (error: unknown) => error,
+    )
+    // Nothing but what is due now: not one of the eight refresh attempts, which are spread over about 25 s of timers.
+    await vi.advanceTimersByTimeAsync(0)
+    expect(network.requests).toEqual([])
+    expect(await outcome).toBe('resolved')
+
+    expect(onDevice()).toEqual([])
+    expect((await client.auth.getSession()).data.session).toBeNull()
+    expect(events[events.length - 1]).toBe('SIGNED_OUT')
+  })
+
+  it('it is the browser\'s word that decides, not a failed request: a server that would answer is not asked either', async () => {
+    network.respond = async () => new Response(null, { status: 204 })
+    storeSession(3600)
+
+    await expect(signOut()).resolves.toBeUndefined()
+
+    expect(network.requests).toEqual([])
+    expect(onDevice()).toEqual([])
+  })
+})
+
 describe('signOut with a connection', () => {
   it('the server answers: the session ends, on the server and here, and the device sign-out is not used', async () => {
     network.respond = async () => new Response(null, { status: 204 })
@@ -213,16 +305,18 @@ describe('signOut with a connection', () => {
   })
 })
 
-describe('signOut when the server answered with an error', () => {
-  // DECISIONS 77 covers "the server can't be reached". A server that answered with an error is a decision card in chunk 11's report: these pin
-  // what the service does with it today, which is what supabase-js does: the session stays on this device and the error is thrown.
-  it.each([[500], [502], [429]])('a %i is not "no connection": it is thrown as it came, and the session is still on the device', async (status) => {
-    network.respond = answer(status, { message: 'The server said no', code: 'over_request_rate_limit' })
+// What can make the sign-out on this device fail (authService.signOutOnThisDevice): the session will not leave the device.
+describe('a sign-out on this device that cannot finish', () => {
+  it('storage that will not let the session go: the sign-out fails and throws, and the person is still signed in', async () => {
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new DOMException('denied', 'SecurityError')
+    })
     storeSession(3600)
 
-    await expect(signOut()).rejects.toMatchObject({ status })
+    await expect(signOut()).rejects.toMatchObject({ name: 'AuthRetryableFetchError' })
 
-    expect(network.requests).toEqual(['POST /auth/v1/logout?scope=global'])
+    // supabase-js still held the session, so the local sign-out asked the server too, and got no answer either.
+    expect(network.requests).toEqual(['POST /auth/v1/logout?scope=global', 'POST /auth/v1/logout?scope=local'])
     expect(localStorage.getItem(AUTH_STORAGE_KEY)).not.toBeNull()
     expect((await client.auth.getSession()).data.session?.user.email).toBe('anna@firma.pl')
     expect(events).not.toContain('SIGNED_OUT')

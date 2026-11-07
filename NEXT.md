@@ -4,13 +4,14 @@
 ## Planned, not built
 
 ### Left over from 0.1 (2026-11-07)
+- Sign-out with an expired token on a network that looks connected but isn't (Wi-Fi up, internet gone; or a server answering 5xx to the refresh) still waits ≈ 25 s while supabase-js retries its refresh before the device sign-out runs; a time limit on the server attempt would cover it (chunk 11, card 3, option c; Adam chose the `navigator.onLine` skip, DECISIONS 83).
+- CI's `npm test` log carries React Router future-flag warnings from `App.test.tsx` and `AppShell.test.tsx` (harmless); passing the router's `future` flags in those tests would silence them.
 - `check-migration` counts `create table if not exists` as created even when the table exists, so grants, policies, indexes and revokes on it pass (LEARNINGS B13; Overload's, not this build's).
 - L239's exception (DECISIONS 74) could add "and verify-rls on the replay passes": a replaced function or view can change access without changing a row. Adam to confirm.
 - The tokens check misses CSS shorthands with a named colour or typed size; the no-database check misses the client under an alias (`const db = supabase`). Both written in the checks' headers.
 - Desktop Table rows that open from the keyboard show only the browser's default focus outline (no focus style of their own).
 - Decided 49 names `own` tables only for the `user_id` column; `signed-in` tables need it too (verify-rls's peer probe counts by it). The stack skill says both.
 - The checklist's Windows cmd lines have never run on Windows, and its shared store has never held a real write: Adam's first new app is the test.
-- CI (`migration-replay.yml`) runs `npm run check` (the script tests) but not vitest, so every `src/` test, chunk 11's real-client sign-out proof included, runs only under `npm test`: a supabase-js upgrade in an app could break the device sign-out unnoticed until then.
 - The cost table's third calibration from this build's figures (LEARNINGS B16), at the close.
 
 ## Offline writing add-on: rules kept aside

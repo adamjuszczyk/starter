@@ -43,7 +43,7 @@ What this build found, one line each:
 - **54** The embeds check's local PostgREST runs its anon role as `postgres`, because anon is revoked on own and signed-in tables (a probe as anon would fail every valid embed).
 - **59** verify-rls counts rows with a GET and `limit(0)`, never HEAD: a refused HEAD reaches supabase-js with no error code, so a correct refusal would read as a failure.
 - **61** The app's replay seed for verify-rls is an optional `supabase/verify-rls-seed.sql`; without it a non-empty access list fails loudly.
-- **62** The script tests run in CI (`npm run check`), because the list test is the only thing that catches a table the code reads but the access list lacks.
+- **62** The script tests run in CI (`npm run check`), because the list test is the only thing that catches a table the code reads but the access list lacks. Since chunk 12 the app tests run there too (`npm test`, DECISIONS 84).
 - **63** verify-rls fails an own or signed-in table that `anon` holds any privilege on (default privileges included), since every probe passes behind RLS while only the catalog sees it.
 - **69** `migration-rules.mjs` now passes a `revoke` on a table the same batch creates. This loosens a data-safety check (every app's every table has such a revoke); any other revoke is still flagged.
 
@@ -52,11 +52,12 @@ What this build found, one line each:
 - The kit's 80 built pictures were compared with the 80 frozen prototype pictures by name, pixel by pixel: every state, 390 and 1280 px, light and dark. Differences are only the rotated "DEMO" tab label's edge pixels (anti-aliasing) in every picture, and 3 edge pixels of the dialog's corner in the two desktop Delete states. No clipping found. The built pictures are in `design/0.1/built/`.
 - All scripts, typecheck, build, the build check, the replay, verify-rls (fixture and app), the embeds check, the context-size check and the checklist page check pass; the full vitest suite passes (255 tests) and the script tests pass (290, none skipped, the checklist page's browser tests included).
 
-## Decisions Adam made after the release check (2026-11-07, DECISIONS 77–81)
+## Decisions Adam made after the release check (2026-11-07, DECISIONS 77–84)
 
-1. **Signing out with no connection signs out on this device** (chunk 11): the stored session is removed, supabase-js signs out locally, the cache is cleared and the sign-in screen shows. A test with the real client and no network proves no session is left on the device. (supabase-js's `signOut({ scope: 'local' })` alone still asks the server and keeps the session when that fails, so the stored session is removed first: DECISIONS 81.)
-2. **L239's exception** to "every flagged migration is a card" now also needs verify-rls on the replay to pass (RULES.md "Escalation", DECISIONS 78).
-3. **Confirmed as built:** the loosened revoke check (DECISIONS 69), desktop table rows opening from the keyboard, Supabase "Automatic branching" off at the checklist's step 3, the checklist and its test in every app made from the template (DECISIONS 79).
+1. **A sign-out that fails in any way signs out on this device** (chunks 11 and 12): with no connection, a server error or a rate limit, the stored session is removed, supabase-js signs out locally, the cache is cleared and the sign-in screen shows; when the browser reports itself offline the server is not asked at all. Tests with the real client prove no session is left on the device, after a server error too, and that offline sends no request. (supabase-js's `signOut({ scope: 'local' })` alone still asks the server and keeps the session when that fails, so the stored session is removed first: DECISIONS 81–83.)
+2. **The app tests run in CI** on every pull request, beside the script tests (DECISIONS 84).
+3. **L239's exception** to "every flagged migration is a card" now also needs verify-rls on the replay to pass (RULES.md "Escalation", DECISIONS 78).
+4. **Confirmed as built:** the loosened revoke check (DECISIONS 69), desktop table rows opening from the keyboard, Supabase "Automatic branching" off at the checklist's step 3, the checklist and its test in every app made from the template (DECISIONS 79).
 
 ## The vibe check
 
