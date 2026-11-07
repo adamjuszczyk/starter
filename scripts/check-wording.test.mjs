@@ -83,6 +83,18 @@ const TEXT_ATTRS = new Set([
 // An entry that matches nothing fails the "no stale entry" test.
 export const ALLOWED = [
   {
+    file: 'src/components/overlay.ts',
+    family: 'words',
+    text: 'Escape',
+    reason: "DECISIONS 67: the value of KeyboardEvent.key that closes the top overlay (`event.key === 'Escape'`); a key name the browser reports, compared and never drawn on a screen",
+  },
+  {
+    file: 'src/components/overlay.ts',
+    family: 'words',
+    text: 'Tab',
+    reason: "DECISIONS 67: the value of KeyboardEvent.key that the overlay's focus ring acts on (`event.key === 'Tab'`); a key name the browser reports, compared and never drawn on a screen",
+  },
+  {
     file: 'src/features/pwa/useServiceWorker.ts',
     family: 'words',
     text: '[pwa] service worker registration failed, falling back to bare registration',
