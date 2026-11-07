@@ -17,7 +17,7 @@ Evidence: [short; or a pointer to HISTORY.md]
 
 ## Tests owed
 *(missing proof only)*
-- Chunk 4, `src/features/auth/authService.test.ts`: a pair that tells the error code from the message: `new AuthApiError('Invalid login credentials', 400, 'validation_failed')` → `failed`; `new AuthApiError('Something else', 400, 'invalid_credentials')` → `wrong` (B1 review: swapping the code check for a message regex kept all 156 tests green). Owed to the release step's tests-owed pass.
+- *(none open)* Chunk 4's code-versus-message pair in `authService.test.ts` was cleared in the release step (2026-11-07, proven by a break: the message regex fails it).
 
 ## 57 The 30% rule stopped the build after chunk 0, which ran under: continue?
 Chunk: 0   Date: 2026-11-06

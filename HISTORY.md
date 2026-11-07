@@ -2,6 +2,10 @@
 
 The record of finished work and what CONTEXT.md no longer needs to say (BUILD.md 2.2: finished work and build logs live here; CONTEXT.md holds only the current state, and pruning it is a move into this file). Newest entry first. Read it only to trace why something is the way it is.
 
+## 2026-11-07 — the release step (Starter 0.1.0)
+
+One reviewer agent 01:46–01:52: `npm run proto:check` (80/80 expectations, no clipping), the 80 built shots against the frozen prototype's (anti-aliasing of the DEMO tab and one dialog corner only), committed to `design/0.1/built/`; every script including the Docker ones; the owed test (proven by a break); the B3 leftovers (the stack skill's environment bullets now point at RULES.md; the checklist test's source comment); `docs/release-0.1.0-notes.md`. The coordinator published the checklist page, wrote the records, merged it as PR #13 and deleted the hourly resume task. The tag is Adam's two commands. Final: $121.87 on the meter, ≈ 4.6 h.
+
 ## 2026-11-07 — chunk 10 (the new-app checklist page)
 
 Builder 00:51–01:29 (38 min). B3 review: merge-ready; the browser tests run with the browser required (29/29); the five steps read against SPEC item 8 and "Pages for me". Merged as PR #12 after bringing it up to date with `main`.

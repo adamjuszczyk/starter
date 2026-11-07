@@ -323,8 +323,8 @@ const browserTest = (name, fn) => test(name, async (t) => {
   await fn(t);
 });
 
-// Copied from prototype/check/clipping.mjs (`findClipped`, which that file lifted from Overload's prototype/check/clipping.mjs); copied,
-// not imported: chunk 8 rewrites that file in the same batch as this one (TASKS.md, Decided 44). It runs in the page and reports any
+// Copied from prototype/check/clipped.mjs (`findClipped`, which Overload's prototype/check/clipping.mjs held first); copied, not imported:
+// chunk 8 rewrote that check in the same batch as this one (TASKS.md, Decided 44). It runs in the page and reports any
 // element that cuts off its own content, any squeezed flex child, and a sideways scroll of the page itself.
 const findClipped = () => {
   const out = []

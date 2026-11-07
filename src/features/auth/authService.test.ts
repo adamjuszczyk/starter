@@ -50,6 +50,17 @@ describe('signIn', () => {
     expect(error.failure).toBe('wrong')
   })
 
+  it('wrong is told by the error code, never by the message: the credentials message with another code is `failed`, another message with the credentials code is `wrong`', async () => {
+    auth.signInWithPassword.mockResolvedValue({ data: { user: null, session: null }, error: new AuthApiError('Invalid login credentials', 400, 'validation_failed') })
+    const sameMessage = await failure()
+    expect(sameMessage.failure).toBe('failed')
+    expect(sameMessage.reason).toBe('Invalid login credentials')
+    auth.signInWithPassword.mockResolvedValue({ data: { user: null, session: null }, error: new AuthApiError('Something else', 400, 'invalid_credentials') })
+    const sameCode = await failure()
+    expect(sameCode.failure).toBe('wrong')
+    expect(sameCode.reason).toBeUndefined()
+  })
+
   it('offline: a fetch `TypeError` (the browser\'s failed fetch) is thrown as `offline`', async () => {
     auth.signInWithPassword.mockRejectedValue(new TypeError('Failed to fetch'))
     const error = await failure()
