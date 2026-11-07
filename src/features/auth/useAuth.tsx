@@ -52,12 +52,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     setSigningOut(true)
     try {
-      // The server ends the session first, then the cache goes: a sign-out that fails clears nothing, because the person is still signed in.
+      // The session ends first, then the cache goes. With no connection `endSession` ends the session on this device alone and resolves
+      // (authService.signOut, SPEC Screens as amended 2026-11-07), so that case runs the same lines as any sign-out: SIGNED_OUT reaches the
+      // listener above and the sign-in screen shows, the cache is cleared, and both sign-out buttons, which read `signingOut`, show the same
+      // pending state. A sign-out that fails clears nothing, because the person is still signed in.
       await endSession()
       queryClient.clear()
     } catch {
-      // With no connection the request fails and supabase-js keeps the session (authService.signOut says why). The person is still signed in, so
-      // the screen stays as it is and the button goes back to normal. SPEC names no message for it.
+      // Only a failure that is not "no connection" gets here: a server that answered with an error, which leaves the session on this device
+      // (authService.signOut says why). The person is still signed in, so the screen stays as it is and the button goes back to normal. SPEC
+      // names no message for it.
     } finally {
       setSigningOut(false)
     }
