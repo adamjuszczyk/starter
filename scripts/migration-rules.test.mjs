@@ -1,6 +1,7 @@
 // migration-rules.test.mjs — run with: node --test "scripts/*.test.mjs"
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { classify, splitStatements } from './migration-rules.mjs';
 
 const added = (sql, path = 'supabase/migrations/20260101000000_x.sql') => [{ path, status: 'A', sql }];
@@ -65,4 +66,80 @@ test('editing an existing migration is flagged', () => {
 test('deleting an existing migration is flagged', () => {
   const r = classify([{ path: 'supabase/migrations/1_a.sql', status: 'D', sql: null }]);
   assert.equal(r.safe, false);
+});
+
+// A revoke is safe only on a table this batch creates, as a grant is: nobody has rights on a new table yet, so nothing is taken away. Decided 39
+// asks for `revoke all … from public, anon, …` in the migration that creates an own or signed-in table, and DECISIONS 69 added the case.
+test('revoke on a table created in the same batch is safe, written any way a migration writes it', () => {
+  for (const revoke of [
+    'revoke all on table sessions from public, anon, authenticated, service_role',
+    'revoke all on sessions from anon',
+    'REVOKE ALL PRIVILEGES ON TABLE public.sessions FROM ANON CASCADE',
+    'revoke select (id), update (id) on table sessions from anon',
+    'revoke grant option for select on sessions from anon',
+  ]) {
+    safe(`create table sessions (id uuid primary key); ${revoke};`);
+  }
+});
+
+test('one revoke may name several tables, and each must be created in the batch', () => {
+  safe('create table public.a (id int); create table public.b (id int); revoke all on table public.a, public.b from anon;');
+  safe('create table a (id int); create table b (id int); revoke all on table a,public.b from anon;');
+});
+
+test('unquoted names are lower case and quoted ones are exact, as in Postgres', () => {
+  safe('create table Plans (id int); revoke all on table plans from anon;');
+  safe('create table "Plans" (id int); revoke all on table "Plans" from anon;');
+  flagged('create table "Plans" (id int); revoke all on table plans from anon;');
+  flagged('create table app.plans (id int); revoke all on table plans from anon;');
+});
+
+test('revoke on a table that already exists is flagged, whatever it takes away and from whom', () => {
+  flagged('revoke select on workouts from anon;');
+  flagged('revoke all on table public.workouts from public, anon, authenticated, service_role;');
+  flagged('revoke select (id) on workouts from anon;');
+  // a table the batch creates does not excuse a revoke on another one
+  flagged('create table sessions (id int); revoke select on workouts from anon;');
+});
+
+test('a revoke is flagged when any table it names is not created earlier in the batch', () => {
+  flagged('create table a (id int); revoke all on table a, workouts from anon;');
+  flagged('create table a (id int); revoke all on table workouts, a from anon;');
+  flagged('create table a (id int); revoke all on table a, public.b from anon;');
+  // the revoke comes before the create
+  flagged('revoke all on table plans from anon; create table plans (id int);');
+});
+
+test('a revoke in a later file of the same branch counts the tables of an earlier file; one that sorts before it does not', () => {
+  const create = { path: 'supabase/migrations/001_a.sql', status: 'A', sql: 'create table plans (id uuid primary key);' };
+  const revoke = { path: 'supabase/migrations/002_b.sql', status: 'A', sql: 'revoke all on table plans from anon;' };
+  assert.equal(classify([create, revoke]).safe, true);
+  assert.equal(classify([{ ...create, path: 'supabase/migrations/002_a.sql' }, { ...revoke, path: 'supabase/migrations/001_b.sql' }]).safe, false);
+});
+
+test('a revoke that is not on a table is still flagged: a schema, a function, every table of a schema, a role, default privileges', () => {
+  for (const sql of [
+    'revoke all on schema public from anon',
+    'revoke execute on function f() from public',
+    'revoke all on all tables in schema public from anon',
+    'revoke some_role from other_role',
+    'alter default privileges in schema public revoke all on tables from anon',
+  ]) {
+    flagged(`create table sessions (id int); ${sql};`);
+  }
+});
+
+// Chunk 3's fixture migration is written the way the stack skill says a table's migration is written (RLS, the policies of its kind, then
+// `revoke all` and the grants). The check built for migrations has to pass it: a migration that follows Decided 39 and is flagged for doing so
+// would stop every table of every app at a decision card. This runs the real classifier on the real file. Its control names one more table in
+// the revoke, which this migration does not create: the verdict must turn on that revoke.
+test("chunk 3's fixture migration (policies, then revoke all and the grants) is safe", () => {
+  const sql = readFileSync(new URL('./verify-rls-fixture/migrations/001_fixture.sql', import.meta.url), 'utf8');
+  assert.match(sql, /^revoke all on table /m, 'the fixture no longer revokes: this test would prove nothing');
+  const path = 'supabase/migrations/001_fixture.sql';
+  const r = classify(added(sql, path));
+  assert.equal(r.safe, true, JSON.stringify(r.flagged));
+  const control = classify(added(sql.replace(/^(revoke all on table [^\n]*?)( from )/m, '$1, public.not_in_this_batch$2'), path));
+  assert.equal(control.safe, false);
+  assert.deepEqual(control.flagged.map((f) => f.reason), ['revoke on an existing table']);
 });
