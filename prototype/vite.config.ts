@@ -39,12 +39,19 @@ function fakeDataLayer(): Plugin {
     ...Object.entries(SWAPS).map(([real, fake]) => [path.join(REPO, real), path.join(FAKES, fake)]),
     ...OVERRIDDEN.map((real) => [path.join(REPO, real), path.join(OVERRIDES, path.basename(real))]),
   ])
+  // The dev server answers a request for a file's URL by resolving it with no importer, which Vite gives the importer `<root>/index.html`. That is
+  // no import, and a swap there would serve the fake when the real module is asked for by its URL: a fake that re-exports the real module
+  // would import itself. Only an import written in a module is swapped.
+  let page = ''
   return {
     name: 'prototype-fake-data',
     enforce: 'pre',
+    configResolved(config) {
+      page = path.join(config.root, 'index.html')
+    },
     async resolveId(source, importer, options) {
       // A fake may import the real module it stands in for (the sign-in error class, say): the swap applies to the app's imports, not to its own.
-      if (!importer || importer.startsWith(FAKES)) return null
+      if (!importer || importer === page || importer.startsWith(FAKES)) return null
       const resolved = await this.resolve(source, importer, { ...options, skipSelf: true })
       // A swap never points a module at itself (an override that imports nothing of its own original).
       if (resolved && swaps[resolved.id] && swaps[resolved.id] !== importer) return swaps[resolved.id]

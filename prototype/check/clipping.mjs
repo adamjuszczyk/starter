@@ -45,6 +45,7 @@ const INSIDE_PX = 1 // the box of an overlay may stick out of the frame's by thi
 const failures = [] // everything that is not clean, printed at the end
 const clipped = []
 let visits = 0
+let menusRead = 0
 let expectsMet = 0
 let shots = 0
 const overlaysSeen = { panel: 0, dialog: 0, toast: 0 }
@@ -97,6 +98,7 @@ async function readStates(page, where) {
     els.map((el) => ({ name: el.getAttribute('data-demo-state'), expect: el.getAttribute('data-demo-expect'), drive: el.getAttribute('data-demo-drive') })),
   )
   await closeMenu(page)
+  menusRead += 1
   const states = rows.map((row) => {
     let expect = null
     try {
@@ -247,10 +249,14 @@ const rest = failures.filter((f) => !errors.includes(f))
 if (rest.length) console.log(rest.join('\n'))
 console.log(errors.length ? 'PAGE ERRORS\n  ' + [...new Set(errors)].slice(0, 6).join('\n  ') : 'no page errors')
 console.log(
-  failures.some((f) => f.startsWith('DEMO MENU')) ? 'DEMO MENU: states or expectations missing (above)' : `DEMO menu: ${STATES} states, every one has an expect`,
+  menusRead === 0
+    ? 'DEMO MENU: never read, because no page started'
+    : failures.some((f) => f.startsWith('DEMO MENU'))
+      ? 'DEMO MENU: states or expectations missing (above)'
+      : `DEMO menu: ${STATES} states, every one has an expect`,
 )
 console.log(`every state's expect met: ${expectsMet} of ${visits} visits (${Object.keys(WIDTHS).length} widths x ${THEMES.length} themes x ${STATES} states)`)
 console.log(`PHONE FRAME: ${framePass} overlay boxes inside the frame (${overlaysSeen.panel} panel, ${overlaysSeen.dialog} dialog, ${overlaysSeen.toast} toast)`)
 console.log(`${shots} screenshots in ${outDir}`)
-console.log(clipped.length === 0 ? 'NO CLIPPING FOUND' : `${clipped.length} clipped elements`)
+console.log(visits === 0 ? 'NOTHING WAS CHECKED: no page started' : clipped.length === 0 ? 'NO CLIPPING FOUND' : `${clipped.length} clipped elements`)
 process.exit(failures.length === 0 && clipped.length === 0 && expectsMet === visits && visits === Object.keys(WIDTHS).length * THEMES.length * STATES ? 0 : 1)
