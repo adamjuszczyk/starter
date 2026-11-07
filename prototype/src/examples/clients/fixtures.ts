@@ -1,4 +1,4 @@
-// Example rows for the prototype. Made up; marked as examples on screen.
+// Example rows for the prototype. Made up; marked as examples on screen. The kit's example data (demo/seed.ts puts it into the query cache).
 
 export interface Client {
   id: string
@@ -11,6 +11,9 @@ export interface Client {
   added: string
   notes: string
 }
+
+/** What the form writes: a client without the id and the date the server gives it. */
+export type ClientInput = Omit<Client, 'id' | 'added'>
 
 export const clients: Client[] = [
   { id: 'c1', name: 'Piekarnia Pod Wawelem', contact: 'Anna Kowalczyk', city: 'Kraków', phone: '601234567', email: 'biuro@podwawelem.pl', status: 'active', added: '2026-10-28', notes: 'Dzwonić przed 10:00.' },
