@@ -145,3 +145,9 @@ Stage: build (B2 review)
 What happened: `check-migration` adds a table named in `create table if not exists` to the batch's created set even when the table already exists, so grants, policies, indexes and now revokes on it pass as "a table this batch creates". Pre-existing in Overload's lifted rules, not introduced by this build.
 Possible change: none yet; the next build that touches `migration-rules.mjs` treats `if not exists` as not created.
 Verdict:
+
+## B14 "Renders the real screens" did not trace what the real screens import   status: open
+Stage: build (chunk 8)
+What happened: the kit's scope listed five swaps without tracing `App.tsx`'s import chain (a PWA module that exists only under the app's own build) or how example screens enter the real route table; both were found only by building (DECISIONS 71, 72). A dev-server-only trap (a fake that re-exports the real module imports itself under the dev server) was found by opening the page, not by the check.
+Possible change: a plan that says "renders the real X" lists what X's imports reach and how extra screens join X's routes; the kit's check also loads the dev server once.
+Verdict:
