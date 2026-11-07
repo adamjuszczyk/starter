@@ -741,7 +741,7 @@ test('replay-migrations.sh --fixture replays the fixture after the app\'s migrat
   assert.match(code, /FIXTURE_DIR="scripts\/verify-rls-fixture"/);
 });
 
-test('the migration-replay workflow runs the sign-ups check, every script test, then the self-test and the app\'s list once npm ci has run', () => {
+test('the migration-replay workflow runs the sign-ups check, every script test, the app tests, then the self-test and the app\'s list once npm ci has run', () => {
   const runs = [...text('../.github/workflows/migration-replay.yml').matchAll(/^\s+run: (.+)$/gm)].map((m) => m[1].trim());
   const step = (command) => {
     assert.ok(runs.includes(command), `the workflow has no step \`${command}\``);
@@ -751,6 +751,12 @@ test('the migration-replay workflow runs the sign-ups check, every script test, 
   // `npm run check` is every scripts/*.test.mjs, verify-rls-list.test.mjs among them (SPEC Rule 6's guard).
   assert.match(text('../package.json'), /"check": "node --test \\"scripts\/\*\.test\.mjs\\""/);
   assert.ok(step('npm ci') < step('npm run check'));
+  // DECISIONS 84: the app's own tests (`npm test` is vitest, every src/**/*.test.ts and .tsx) run on every PR beside the script tests, quietly (a
+  // dot for each test, and the lines of any that fails). One of them is the offline sign-out's proof on the real supabase-js client; without this
+  // step a library upgrade in any app made from the starter could undo it unnoticed.
+  assert.match(text('../package.json'), /"test": "vitest run"/);
+  assert.match(text('../vitest.config.ts'), /include: \['src\/\*\*\/\*\.test\.\{ts,tsx\}'\]/);
+  assert.ok(step('npm ci') < step('npm test -- --reporter=dot'));
   assert.ok(step('npm ci') < step('bash scripts/verify-rls-replay.sh --fixture'));
   assert.ok(step('bash scripts/verify-rls-replay.sh --fixture') < step('bash scripts/verify-rls-replay.sh'));
 });

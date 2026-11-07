@@ -7,9 +7,10 @@ import { pl as t } from './i18n/pl'
 import { queryClient } from './lib/queryClient'
 import { resetTheme } from './features/settings/useTheme'
 
-// Sign-out with no connection, through the whole app (SPEC Screens as amended 2026-11-07, DECISIONS 77): the person presses Wyloguj się in
-// Settings or in the side menu, the server cannot be reached, and the sign-in page shows, the cache is empty and the device holds no
-// session. Nothing is stood in for but the network and the page's width: the provider, the sign-out service, the starter's own Supabase
+// A failed sign-out, through the whole app (SPEC Screens as amended 2026-11-07, DECISIONS 77, 82, 83): the person presses Wyloguj się in
+// Settings or in the side menu, the server cannot be reached or answers with an error (or the browser reports itself offline, and the server
+// is not asked), and the sign-in page shows, the cache is empty and the device holds no session. Nothing is stood in for but the network and
+// the page's width: the provider, the sign-out service, the starter's own Supabase
 // client (src/lib/supabase.ts, loaded for real with a URL and key set here), the Settings page, the side menu and the sign-in page are the
 // real ones, and the device is jsdom's localStorage, which supabase-js reads by default. App.test.tsx stands useAuth in for the route table
 // and says which page a path gets; this file is the one that runs a sign-out through the real provider, whose SIGNED_OUT event is what takes
@@ -121,7 +122,7 @@ afterEach(() => {
 describe.each([
   ['Settings\' button', 'main'],
   ['the side menu\'s button', 'aside'],
-])('%s, with no connection', (_which, where) => {
+])('%s, when the server\'s sign-out fails', (_which, where) => {
   const press = async () => {
     const container = document.querySelector(where) as HTMLElement
     expect(container, `the ${where} is drawn`).not.toBeNull()
@@ -132,7 +133,7 @@ describe.each([
     })
   }
 
-  it('the sign-in page shows, the cache is empty, and the device holds no session', async () => {
+  it('no connection, with the browser not saying so: the sign-in page shows, the cache is empty, and the device holds no session', async () => {
     await renderSignedIn()
     // The controls: the person is in, the cache holds something, and the device holds the session, so what is gone below is the sign-out's doing.
     expect(signInPage()).toBeNull()
@@ -151,10 +152,34 @@ describe.each([
     expect(network.requests).toEqual(['POST /auth/v1/logout?scope=global'])
   })
 
-  it('the device says it is offline as well: the same, and the offline strip goes with the app', async () => {
+  // DECISIONS 82: the failure is not told apart. A server that answers with an error leaves the person signed in on the device with supabase-js
+  // alone; here it signs them out like any other failure, and the one request is all the server is asked.
+  it.each([[500], [502], [429]])('a server that answers with %i: the sign-in page shows, the cache is empty, and the device holds no session', async (status) => {
+    network.respond = async () =>
+      new Response(JSON.stringify({ message: 'The server said no', code: 'over_request_rate_limit' }), { status, headers: { 'content-type': 'application/json' } })
+    await renderSignedIn()
+    expect(signInPage()).toBeNull()
+    expect(cached()).toBe(1)
+    expect(onDevice()).toEqual([AUTH_STORAGE_KEY])
+
+    await press()
+    await waitFor(() => expect(signInPage()).not.toBeNull())
+
+    expect(screen.queryByText(t.settings.account)).toBeNull()
+    expect(signOutButtons()).toHaveLength(0)
+    expect(pendingButtons()).toHaveLength(0)
+    expect(cached()).toBe(0)
+    expect(onDevice()).toEqual([])
+    expect((await client.auth.getSession()).data.session).toBeNull()
+    expect(network.requests).toEqual(['POST /auth/v1/logout?scope=global'])
+  })
+
+  // DECISIONS 83: the browser's own word. The server is not asked at all, so there is no request to wait for or to fail.
+  it('the browser reports itself offline: the server is not asked, the sign-in page shows, and the offline strip goes with the app', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
     await renderSignedIn()
     expect(screen.getByRole('status').textContent).toBe(t.common.offline)
+    expect(cached()).toBe(1)
 
     await press()
     await waitFor(() => expect(signInPage()).not.toBeNull())
@@ -162,6 +187,8 @@ describe.each([
     expect(screen.queryByRole('status')).toBeNull()
     expect(cached()).toBe(0)
     expect(onDevice()).toEqual([])
+    expect((await client.auth.getSession()).data.session).toBeNull()
+    expect(network.requests).toEqual([])
   })
 })
 
@@ -210,8 +237,8 @@ describe('the phone layout, with no connection', () => {
   })
 })
 
-describe('with a connection, and with a server that answers with an error', () => {
-  it('a sign-out the server answers ends in the same place as one with no connection: the sign-in page, an empty cache, an empty device', async () => {
+describe('with a connection', () => {
+  it('a sign-out the server answers ends in the same place as one that failed: the sign-in page, an empty cache, an empty device', async () => {
     network.respond = async () => new Response(null, { status: 204 })
     await renderSignedIn()
 
@@ -224,18 +251,21 @@ describe('with a connection, and with a server that answers with an error', () =
     expect(onDevice()).toEqual([])
     expect(network.requests).toEqual(['POST /auth/v1/logout?scope=global'])
   })
+})
 
-  // DECISIONS 77 covers "the server can't be reached" only: a server that answered with an error is a decision card (chunk 11's report). Until
-  // it is decided the person stays signed in, as before: the screen stays as it was, the buttons go back, the session is still on the device.
-  it('a server that answered with an error: the person stays signed in, the buttons are back, the cache and the session are untouched', async () => {
-    network.respond = async () =>
-      new Response(JSON.stringify({ message: 'Bad Gateway' }), { status: 502, headers: { 'content-type': 'application/json' } })
+// The only way a sign-out now fails (authService.signOutOnThisDevice): the session will not leave the device. The person is still signed in then:
+// the screen stays as it was, the buttons go back, and the session is still stored.
+describe('a sign-out on this device that cannot finish', () => {
+  it('storage that will not let the session go: the person stays signed in, the buttons are back, the cache and the session are untouched', async () => {
     await renderSignedIn()
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new DOMException('denied', 'SecurityError')
+    })
 
     await act(async () => {
       fireEvent.click(signOutButtons(document.querySelector('main') as HTMLElement)[0])
     })
-    await waitFor(() => expect(network.requests).toHaveLength(1))
+    await waitFor(() => expect(network.requests).toHaveLength(2))
     await waitFor(() => expect(pendingButtons()).toHaveLength(0))
 
     expect(signInPage()).toBeNull()

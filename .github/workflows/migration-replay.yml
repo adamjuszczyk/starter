@@ -66,6 +66,13 @@ jobs:
       - name: Script tests (npm run check)
         run: npm run check
 
+      # The app's own tests (vitest: every src/**/*.test.ts and .tsx), on every PR beside the script tests (DECISIONS 84): a change, or a library
+      # upgrade in any app made from the starter, that undoes what they pin is seen before it merges. The offline sign-out's proof is one of
+      # them: it runs the real supabase-js client. Quiet: a dot for each test, and the lines of any that fails. It needs node_modules (npm ci
+      # above) and nothing else: no Supabase project, no secrets, and no network, because the tests stand in for the requests.
+      - name: App tests (npm test)
+        run: npm test -- --reporter=dot
+
       # The self-test, always: the replay also applies scripts/verify-rls-fixture/
       # (three tables, one per kind, two users with rows) and verify-rls must PASS
       # every check on it, as the role a hosted project runs (PostgREST connected
