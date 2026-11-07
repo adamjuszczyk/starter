@@ -95,6 +95,12 @@ export const ALLOWED = [
     reason: "DECISIONS 67: the value of KeyboardEvent.key that the overlay's focus ring acts on (`event.key === 'Tab'`); a key name the browser reports, compared and never drawn on a screen",
   },
   {
+    file: 'src/components/Table.tsx',
+    family: 'words',
+    text: 'Enter',
+    reason: "DECISIONS 67: the value of KeyboardEvent.key that opens a focused table row (Enter, beside the space key); a key name the browser reports, compared and never drawn on a screen",
+  },
+  {
     file: 'src/features/pwa/useServiceWorker.ts',
     family: 'words',
     text: '[pwa] service worker registration failed, falling back to bare registration',

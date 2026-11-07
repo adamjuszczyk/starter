@@ -100,6 +100,46 @@ describe('Table', () => {
     expect(classesOf(bodyRows(container)[0])).toEqual(expect.arrayContaining(['cursor-pointer', 'hover:bg-raised']))
   })
 
+  it('a row that opens is reached by Tab and opens on Enter and on Space, and on no other key; a control inside a cell keeps its own keys', () => {
+    const onRowClick = vi.fn()
+    const inner = vi.fn()
+    const withButton: Column<Client>[] = [
+      { key: 'name', header: 'Nazwa', render: (c) => c.name },
+      { key: 'act', header: 'Akcja', render: (c) => <button type="button" onKeyDown={() => inner(c.id)}>{`Akcja ${c.id}`}</button> },
+    ]
+    const { container, rerender } = render(<Table columns={withButton} rows={rows} onRowClick={onRowClick} label="Klienci" />)
+    const [first, second] = bodyRows(container) as HTMLElement[]
+    expect([first.getAttribute('tabindex'), second.getAttribute('tabindex')]).toEqual(['0', '0'])
+    first.focus()
+    expect(document.activeElement).toBe(first)
+
+    fireEvent.keyDown(first, { key: 'Enter' })
+    expect(onRowClick).toHaveBeenCalledTimes(1)
+    expect(onRowClick.mock.calls[0][0]).toBe(rows[0])
+    // Space opens the row too, and its default (scrolling the page) is taken: fireEvent says false when preventDefault was called.
+    expect(fireEvent.keyDown(second, { key: ' ' })).toBe(false)
+    expect(onRowClick).toHaveBeenCalledTimes(2)
+    expect(onRowClick.mock.calls[1][0]).toBe(rows[1])
+
+    // Any other key opens nothing and leaves its default alone.
+    for (const key of ['Tab', 'a', 'Escape', 'ArrowDown']) expect(fireEvent.keyDown(first, { key })).toBe(true)
+    expect(onRowClick).toHaveBeenCalledTimes(2)
+
+    // A key pressed on a control inside a cell reaches the control and stops there: the row is not opened by it.
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Akcja a' }), { key: 'Enter' })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Akcja b' }), { key: ' ' })
+    expect(inner.mock.calls).toEqual([['a'], ['b']])
+    expect(onRowClick).toHaveBeenCalledTimes(2)
+
+    // Without onRowClick the rows are plain: out of the Tab order, no key does anything. Skeleton rows are plain too.
+    rerender(<Table columns={withButton} rows={rows} label="Klienci" />)
+    expect(bodyRows(container).some((tr) => tr.hasAttribute('tabindex'))).toBe(false)
+    rerender(<Table columns={withButton} rows={rows} loading onRowClick={onRowClick} label="Klienci" />)
+    expect(bodyRows(container).some((tr) => tr.hasAttribute('tabindex'))).toBe(false)
+    for (const tr of bodyRows(container)) fireEvent.keyDown(tr, { key: 'Enter' })
+    expect(onRowClick).toHaveBeenCalledTimes(2)
+  })
+
   it('a skeleton row opens nothing', () => {
     const onRowClick = vi.fn()
     const { container } = render(<Table columns={columns} rows={rows} loading onRowClick={onRowClick} label="Klienci" />)
