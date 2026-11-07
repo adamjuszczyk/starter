@@ -177,3 +177,9 @@ Chunk: 9   Date: 2026-11-07
 Recommendation: the definitions say "the coordinator brings it up to date"; RULES.md carries L543 (merge the base into the branch, never force-push).
 Answer: coordinator. Reason: a rebase needs a force-push, which the classifier refused in Overload; an agent's run ends at its report, so the reviewer cannot do it between merges (LEARNINGS B7).
 Evidence: chunk 9 report, card 2.
+
+## 76 The checklist page's browser tests skip visibly without a browser
+Chunk: 10   Date: 2026-11-07
+Recommendation: CI (no Playwright) skips the 17 browser tests with the reason shown; reviewers and the release run them with `CHECKLIST_REQUIRE_BROWSER=1`, which fails when the browser is absent.
+Answer: coordinator. Reason: adding Playwright to the shared workflow is a dependency for one page; a skip that says so is not a pass, and the reviewer runs it for real.
+Evidence: chunk 10 report, card 1; B3 review (29/29, 0 skipped).
