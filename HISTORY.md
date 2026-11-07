@@ -2,6 +2,10 @@
 
 The record of finished work and what CONTEXT.md no longer needs to say (BUILD.md 2.2: finished work and build logs live here; CONTEXT.md holds only the current state, and pruning it is a move into this file). Newest entry first. Read it only to trace why something is the way it is.
 
+## 2026-11-07 — chunk 6 (Panel, ConfirmDialog, Table, Toast, the list patterns)
+
+Builder 00:01–00:23 (22 min). B2 review 00:25–00:34 with chunk 7: merge-ready; BottomSheet's logic faithful; 26 breaks re-run, all caught; a look at 390 and 1280 px in both themes against the prototype. Merged as PR #8.
+
 ## 2026-11-06 — chunk 5 (the code checks)
 
 Builder 23:08–23:33, follow-up 23:39–23:43 (CSS declarations, DECISIONS 66). B1 review: merge-ready; 45 planted breaks of its own; zero hits on the merged tree with chunk 4. RULES.md's shared-scripts rule gained its one exception (ALLOWED entries, DECISIONS 68). Merged as PR #7 after a rebase on `main`.
