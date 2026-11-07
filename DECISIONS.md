@@ -117,3 +117,21 @@ Chunk: 4   Date: 2026-11-06
 Recommendation: `AuthRetryableFetchError` is `offline` only with status 0 (no answer); a 5xx answer is `failed` with its reason.
 Answer: coordinator. Reason: SPEC shows offline for "no connection"; a server that answered is connected, and its reason helps.
 Evidence: chunk 4 report, card 3; B1 review through the real supabase-js (aborted → offline; 429 → failed with the reason).
+
+## 66 The tokens check also reads CSS declarations
+Chunk: 5 (follow-up before review)   Date: 2026-11-06
+Recommendation: in `src/**/*.css` except `tokens.css`, `font-size`, the radii, the shadows and the colour properties must be `var(--…)` or a keyword; layout passes.
+Answer: coordinator. Reason: SPEC item 4's sentence ("a typed-in colour, text size or radius in `src/`") covers CSS; the scope listed only the Tailwind and inline forms.
+Evidence: chunk 5 report, card 1; follow-up 79c077f; B1 review (`font-size: 13px` in CSS a hit).
+
+## 67 Capitalised developer tokens get one ALLOWED entry each
+Chunk: 5   Date: 2026-11-06
+Recommendation: `'Escape'`, `'Tab'`, `'PLN'` and the like are words-check hits (Decided 10: code-like means not starting with a capital); each gets one ALLOWED entry with its reason.
+Answer: coordinator. Reason: the scope fixes the pass classes; an entry is one visible line, a new pass class would hide more than it should.
+Evidence: chunk 5 report, card 2.
+
+## 68 ALLOWED entries are the one change to a shared check allowed during a build
+Chunk: 5   Date: 2026-11-06
+Recommendation: RULES.md "Reviewer rules": a chunk may add an ALLOWED entry, with its reason, to `check-wording.test.mjs` or `check-tokens.test.mjs`; nothing else in a shared script changes during a build.
+Answer: coordinator. Reason: chunk 6 needs entries (`'Escape'`, `'Tab'`, the focus-trap selector), and the rule as written would revert them.
+Evidence: chunk 5 report, "heads-up for chunk 6".

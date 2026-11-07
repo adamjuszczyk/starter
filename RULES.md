@@ -43,7 +43,7 @@ Stop and report to Adam (do not route around, do not ask "should I continue with
 - Don't read code to check what a script can check. No script yet: write one, or verify by hand and say so.
 - Run every script in scripts/ at every chunk boundary.
 - Never write an unconfirmed belief into CONTEXT.md as fact.
-- Shared scripts are never changed during a build. A chunk that changes one gets the change reverted before merging.
+- Shared scripts are never changed during a build. A chunk that changes one gets the change reverted before merging. The one exception: an `ALLOWED` entry, with its reason, in `scripts/check-wording.test.mjs` or `scripts/check-tokens.test.mjs` (DECISIONS 68).
 
 Also, from 1.2's reviewer rules (kept):
 - Never switch branches in the main checkout while a builder runs or resumes; a reviewer works in its own `git worktree`.
