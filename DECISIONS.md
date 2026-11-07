@@ -16,7 +16,8 @@ Evidence: [short; or a pointer to HISTORY.md]
 *(no flagged migration so far)*
 
 ## Tests owed
-*(missing proof only; none so far)*
+*(missing proof only)*
+- Chunk 4, `src/features/auth/authService.test.ts`: a pair that tells the error code from the message: `new AuthApiError('Invalid login credentials', 400, 'validation_failed')` → `failed`; `new AuthApiError('Something else', 400, 'invalid_credentials')` → `wrong` (B1 review: swapping the code check for a message regex kept all 156 tests green). Owed to the release step's tests-owed pass.
 
 ## 57 The 30% rule stopped the build after chunk 0, which ran under: continue?
 Chunk: 0   Date: 2026-11-06
@@ -104,3 +105,15 @@ Chunk: 3 (follow-up)   Date: 2026-11-06
 Recommendation: the catalog reads `has_table_privilege('anon', …)` (direct, PUBLIC and default privileges) and fails such a table; it fails closed without the field.
 Answer: coordinator. Reason: Decided 39 enforced mechanically; a migration that leans on the default privileges passes every probe (the policies hide the rows) and only this catches it.
 Evidence: chunk 3 review, card C; follow-up break (no `revoke all` → catalog FAIL on fx_own and fx_shared, every probe PASS).
+
+## 64 The words check stays strict on class strings
+Chunk: 4   Date: 2026-11-06
+Recommendation: classes are written in `className` (literal, ternary or `+`) or one class per string through `cx()`; `cx('a b')` with a multi-word string is a words hit.
+Answer: coordinator. Reason: loosening the check for class-like strings would let lowercase multi-word phrases through (Decided 10 as Overload's scanner reads it).
+Evidence: chunk 4 report, card 1; B1 review (`cx('flex gap-2')` a hit, `cx('flex','gap-2')` passes).
+
+## 65 Sign-in: no answer is "offline", a server error is "failed"
+Chunk: 4   Date: 2026-11-06
+Recommendation: `AuthRetryableFetchError` is `offline` only with status 0 (no answer); a 5xx answer is `failed` with its reason.
+Answer: coordinator. Reason: SPEC shows offline for "no connection"; a server that answered is connected, and its reason helps.
+Evidence: chunk 4 report, card 3; B1 review through the real supabase-js (aborted → offline; 429 → failed with the reason).
