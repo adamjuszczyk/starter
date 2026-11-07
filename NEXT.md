@@ -3,6 +3,15 @@
 
 ## Planned, not built
 
+### Left over from 0.1 (2026-11-07)
+- `check-migration` counts `create table if not exists` as created even when the table exists, so grants, policies, indexes and revokes on it pass (LEARNINGS B13; Overload's, not this build's).
+- L239's exception (DECISIONS 74) could add "and verify-rls on the replay passes": a replaced function or view can change access without changing a row. Adam to confirm.
+- The tokens check misses CSS shorthands with a named colour or typed size; the no-database check misses the client under an alias (`const db = supabase`). Both written in the checks' headers.
+- Desktop Table rows that open from the keyboard show only the browser's default focus outline (no focus style of their own).
+- Decided 49 names `own` tables only for the `user_id` column; `signed-in` tables need it too (verify-rls's peer probe counts by it). The stack skill says both.
+- The checklist's Windows cmd lines have never run on Windows, and its shared store has never held a real write: Adam's first new app is the test.
+- The cost table's third calibration from this build's figures (LEARNINGS B16), at the close.
+
 ## Offline writing add-on: rules kept aside
 *Overload's rules for writing offline (its Dexie queue). TASKS.md's appendix sorted them out of Overload's RULES.md as the add-on's (34 lines, class OFFLINE-ADDON), and chunk 9 keeps them here, with Overload's "SPEC rules made standing" line on queued writes, for the day an app takes the add-on. The starter saves online only (SPEC Rule 3: "nothing is queued"), so none of this is built or checked in 0.1. Each line ends with its line of Overload's RULES.md (`adamjuszczyk/overload-v2`, commit `8e00877`). The names (sets, logs, `sync_queue`, `readActiveSession`, `hydrated`, `queueServer.testutil.ts`) are Overload's: the add-on's brief generalizes them.*
 

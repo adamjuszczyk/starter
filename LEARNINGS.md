@@ -158,3 +158,9 @@ Stage: build (chunk 9)
 What happened: every brief said "don't edit RULES.md, NEXT.md…" while chunk 9's scope was to fold rules into RULES.md and fill NEXT.md (and chunk 0's to create them). The builders read the boilerplate as the record-writing ban and followed the scope; the boilerplate now says "except what the chunk's Scope names".
 Possible change: the coordinator's brief template carries that exception from the start.
 Verdict:
+
+## B16 The build ran 40–45% under its estimate   status: open
+Stage: release
+What happened: the estimate was ≈ 8.1 h of running and ≈ $170 (upper bound 9.3 h, $196). The build ran 21:21–01:55 UTC, ≈ 4.6 h of wall clock including setup, the 6-minute stop and the release, and ended at ≈ $122 on the meter. LIGHT builders took 22–46 min (planned ≈ 30) but batch reviews took 9–11 min (planned ≈ 40), and no 5-hour-window pause came. Every chunk merged on its first or second review; three got follow-ups before merge.
+Possible change: the cost table's third calibration (the close) takes this build's per-chunk lines: LIGHT S/M/L and DATA separately, batch reviews at ≈ 10 min, and the meter's figures (the derived ones × 0.73).
+Verdict:
