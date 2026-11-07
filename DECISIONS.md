@@ -46,7 +46,7 @@ Evidence: CONTEXT.md "Questions for the release batch".
 ## 80 The Docker Hub secret
 Chunk: setup   Date: 2026-11-07
 Recommendation: re-save the `auth.docker.io` network secret on the Starter environment as type "basic" (username + token).
-Answer: Adam's reply left the status unfilled ("[done / still to do]"). Checked by the coordinator at 02:05: `auth.docker.io` still answers 500 "unsupported authentication scheme: Bearer" in this session, so it reads as still to do (or saved after this session's network was set). Not blocking: `mirror.gcr.io` carried every pull.
+Answer: Adam's reply left the status unfilled ("[done / still to do]"). Checked by the coordinator at 10:00: `auth.docker.io` still answers 500 "unsupported authentication scheme: Bearer" in this session, so it reads as still to do (or saved after this session's network was set). Not blocking: `mirror.gcr.io` carried every pull.
 Evidence: CONTEXT.md "Repo facts"; LEARNINGS B3.
 
 ## Decided by the coordinator (technical, under Adam's rule of 2026-11-06)
