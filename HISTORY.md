@@ -2,6 +2,10 @@
 
 The record of finished work and what CONTEXT.md no longer needs to say (BUILD.md 2.2: finished work and build logs live here; CONTEXT.md holds only the current state, and pruning it is a move into this file). Newest entry first. Read it only to trace why something is the way it is.
 
+## 2026-11-07 — chunk 10 (the new-app checklist page)
+
+Builder 00:51–01:29 (38 min). B3 review: merge-ready; the browser tests run with the browser required (29/29); the five steps read against SPEC item 8 and "Pages for me". Merged as PR #12 after bringing it up to date with `main`.
+
 ## 2026-11-07 — chunk 9 (agent definitions, the RULES.md folds, NEXT.md)
 
 Builder 00:20–00:49 (28 min). B3 review: merge-ready; ≈ 25 folds read against Overload's lines; L239 worded so a destructive migration still reaches Adam (DECISIONS 74). RULES.md's "Checks that lied" now points at the stack skill. Merged as PR #11 after bringing it up to date with `main`.
