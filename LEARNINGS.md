@@ -133,3 +133,21 @@ Stage: build (chunk 3)
 What happened: the reviewer found chunk 3 merge-ready and raised three additions (the app's replay seed, the list test in CI, the anon-privilege check); RULES.md forbids changing shared scripts later in a build, so the coordinator had them built on the branch before the merge (7 minutes) and re-reviewed.
 Possible change: none yet; if it recurs, TASKS's DATA chunks name the check's use by the first app (its seed) in scope.
 Verdict:
+
+## B12 A decision that adds a statement to every migration was never run through the migration check   status: open
+Stage: build (chunk 7)
+What happened: TASKS Decided 39 puts a `revoke … from anon` in every own and signed-in table's migration; the lifted `check-migration` safe list had no `revoke` case, so every such migration would have been flagged and sent to Adam. Chunk 3's fixture migration had the revoke and nobody ran it through `check-migration`; chunk 7's builder found it while writing the stack skill. Fixed before merge (DECISIONS 69). B5 again: two planned pieces contradicted each other and only a real run showed it.
+Possible change: a plan decision that adds a statement to every migration (or every table, or every screen) is run through every lifted check on the example at plan time; a DATA chunk's fixture migration gets a "passes check-migration" test.
+Verdict:
+
+## B13 `CREATE TABLE IF NOT EXISTS` counts as created by the migration check   status: watch
+Stage: build (B2 review)
+What happened: `check-migration` adds a table named in `create table if not exists` to the batch's created set even when the table already exists, so grants, policies, indexes and now revokes on it pass as "a table this batch creates". Pre-existing in Overload's lifted rules, not introduced by this build.
+Possible change: none yet; the next build that touches `migration-rules.mjs` treats `if not exists` as not created.
+Verdict:
+
+## B14 "Renders the real screens" did not trace what the real screens import   status: open
+Stage: build (chunk 8)
+What happened: the kit's scope listed five swaps without tracing `App.tsx`'s import chain (a PWA module that exists only under the app's own build) or how example screens enter the real route table; both were found only by building (DECISIONS 71, 72). A dev-server-only trap (a fake that re-exports the real module imports itself under the dev server) was found by opening the page, not by the check.
+Possible change: a plan that says "renders the real X" lists what X's imports reach and how extra screens join X's routes; the kit's check also loads the dev server once.
+Verdict:

@@ -135,3 +135,27 @@ Chunk: 5   Date: 2026-11-06
 Recommendation: RULES.md "Reviewer rules": a chunk may add an ALLOWED entry, with its reason, to `check-wording.test.mjs` or `check-tokens.test.mjs`; nothing else in a shared script changes during a build.
 Answer: coordinator. Reason: chunk 6 needs entries (`'Escape'`, `'Tab'`, the focus-trap selector), and the rule as written would revert them.
 Evidence: chunk 5 report, "heads-up for chunk 6".
+
+## 69 A `revoke` on a table the same batch creates is on check-migration's safe list
+Chunk: 7 (follow-up before review)   Date: 2026-11-07
+Recommendation: `scripts/migration-rules.mjs` passes a `revoke` only when every table it names is created earlier in the same batch; any other revoke stays flagged.
+Answer: coordinator. Reason: Decided 39 puts a revoke in every own and signed-in table's migration, and the lifted safe list flagged it, so every app's every table would have stopped on a card; a revoke on a table that did not exist before the batch cannot change existing data or access (the `grant` case's reason). It loosens a data-safety check, so Adam is told at the build's end.
+Evidence: chunk 7 report, card 1; follow-up 6815c4e; B2 review (25 adversarial statements: only that case newly passes).
+
+## 70 The Toast is mounted once, by chunk 8
+Chunk: 6   Date: 2026-11-07
+Recommendation: chunk 8 mounts `<Toast />` once inside `AppRoutes`' `WidthRoot`, with an `App.test` assertion.
+Answer: coordinator. Reason: `App.tsx` is chunk 4's, outside chunk 6's scope, and nothing in `src/` shows a toast until a write exists (SPEC Rule 3, Decided 36).
+Evidence: chunk 6 report, card 2.
+
+## 71 The kit's example screens enter the real route table at load
+Chunk: 8   Date: 2026-11-07
+Recommendation: the kit pushes its example tab into the real `TABS` array at load (as a build edits `tabs.ts`) and takes it out for "New app: what you get"; the design-system page is a DEMO-only view inside that tab.
+Answer: coordinator. Reason: nothing in `src/` changes and the kit's swap list stays at five (no copy of a `src/shell` file); it fails loudly at load if `tabs.ts` ever freezes the array.
+Evidence: chunk 8 report, card 1; B3 review.
+
+## 72 The kit aliases the PWA's virtual module to a no-op
+Chunk: 8   Date: 2026-11-07
+Recommendation: `virtual:pwa-register/react` is aliased to a no-op in `prototype/vite.config.ts`.
+Answer: coordinator. Reason: the module exists only under the app's PWA plugin, so the kit could not resolve `AppRoutes`' import chain; an alias keeps the swap list at five.
+Evidence: chunk 8 report, card 2.

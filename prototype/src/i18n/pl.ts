@@ -3,7 +3,7 @@
 // file of the same type (`Words`), so a missing word fails the type check.
 // Words that depend on a number are functions, using Polish plural forms.
 
-import { plural } from '../lib/format'
+import { plural } from '@app/lib/format'
 
 export const pl = {
   app: {

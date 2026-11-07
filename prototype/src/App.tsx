@@ -1,69 +1,72 @@
 import { useEffect } from 'react'
-import { WidthRoot } from './lib/useWide'
-import { AppShell } from './shell/Shell'
-import { OfflineStrip, Toast, cx } from './components/ui'
-import { ConfirmDialog } from './components/overlays'
-import { ClientsScreen } from './screens/Clients'
-import { ClientForm } from './screens/ClientForm'
-import { SignInScreen } from './screens/SignIn'
-import { SettingsScreen } from './screens/Settings'
-import { DesignSystemScreen } from './screens/DesignSystem'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { Users } from 'lucide-react'
+import { AppRoutes } from '@app/App'
+import { useToastStore } from '@app/features/notifications/toastStore'
+import { cx } from '@app/lib/cx'
+import { queryClient } from '@app/lib/queryClient'
+import { TABS } from '@app/shell/tabs'
+import type { Tab } from '@app/shell/tabs'
 import { DemoButton, DemoMenu } from './demo/DemoMenu'
 import { base, useDemo } from './demo/demoStore'
-import { clients } from './demo/fixtures'
-import { pl as t } from './i18n/pl'
+import ClientsScreen from './examples/clients/ClientsScreen'
+import { exampleWords as w } from './examples/words'
+import { DesignSystemScreen } from './screens/DesignSystem'
 
-const EMAIL = 'anna@firma.pl'
+// The kit's page: the REAL app, drawn by the real AppRoutes (its frame, its sign-in page, its shell, Settings, the toast) under a MemoryRouter,
+// with the DEMO button and menu around it (TASKS.md, Decided 3; Overload's kit assembled a shell of its own from real parts instead). Nothing
+// here draws the app's frame a second time: AppRoutes carries its own WidthRoot (Decided 45), and what this file adds around it is only the box
+// it is given, the phone frame's.
+//
+// The example screens are mounted the way a build mounts its own: as a tab in the real TABS (src/shell/tabs.ts), which is the one place the real
+// AppRoutes and AppShell read the app's screens from. The kit pushes its tab into that array when the page loads, and takes it out for the "New
+// app: what you get" state, which is the starter as it ships (Settings only). In an app the tab is the app's own line in tabs.ts.
 
-// Where the page host set a theme of its own, "as on the device" goes back to it.
-const HOST_THEME = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : null
+// The example's tab. The design-system page is a view of it, DEMO only: not a tab and not a route, so a new app's tab bar never shows it.
+function ClientsTab() {
+  const design = useDemo((s) => s.design)
+  return design ? <DesignSystemScreen /> : <ClientsScreen />
+}
+
+const tabs = TABS as Tab[] // the real array, typed read-only in tabs.ts; AppShell and AppRoutes read it when they render
+const STARTER_TABS: Tab[] = [...tabs]
+const EXAMPLE_TABS: Tab[] = [{ to: '/clients', label: w.nav.clients, Icon: Users, Page: ClientsTab }, ...STARTER_TABS]
+const showTabs = (fresh: boolean) => tabs.splice(0, tabs.length, ...(fresh ? STARTER_TABS : EXAMPLE_TABS))
+showTabs(base.fresh)
+// Before React draws anything (a store listener runs inside `set`), so the app drawn afresh for the state reads the right tabs.
+useDemo.subscribe((state, previous) => {
+  if (state.fresh !== previous.fresh) showTabs(state.fresh)
+})
 
 export default function App() {
-  const d = useDemo()
-  const { set } = d
+  const frame = useDemo((s) => s.frame)
+  const menuOpen = useDemo((s) => s.menuOpen)
+  const applied = useDemo((s) => s.applied)
+  const toast = useDemo((s) => s.toast)
 
-  // Theme: "as on the device" sets nothing, so the device decides (tokens.css).
+  // A message the state shows goes through the real toast store, as a save that worked would; the real Toast clears it after three seconds.
+  // A state without one clears what the one before left.
   useEffect(() => {
-    const root = document.documentElement
-    const value = d.theme === 'system' ? HOST_THEME : d.theme
-    if (value) root.setAttribute('data-theme', value)
-    else root.removeAttribute('data-theme')
-  }, [d.theme])
+    useToastStore.getState().clear()
+    if (toast) useToastStore.getState().show(toast)
+  }, [applied, toast])
 
-  const phone = d.frame === 'phone'
-  const content =
-    d.screen === 'signIn' ? (
-      <SignInScreen state={d.signIn} onSubmit={() => set({ signIn: 'pending' })} />
-    ) : (
-      <AppShell current={d.screen === 'system' ? 'clients' : d.screen} go={(s) => set({ ...base, fresh: d.fresh, screen: s })} email={EMAIL}
-        tabs={d.fresh ? ['settings'] : undefined}
-        banner={!d.online ? <OfflineStrip text={t.common.offline} /> : undefined}>
-        {d.screen === 'settings' ? <SettingsScreen email={EMAIL} theme={d.theme} setTheme={(theme) => set({ theme })} />
-          : d.screen === 'system' ? <DesignSystemScreen />
-          : <ClientsScreen state={d.list} onAdd={() => set({ panel: 'new', form: 'idle' })} onOpen={() => set({ panel: 'edit', form: 'idle' })} onRetry={() => set({ list: 'loading' })} />}
-      </AppShell>
-    )
-
+  const phone = frame === 'phone'
   return (
-    <div className={cx('h-full', phone && 'flex items-center justify-center bg-raised p-4')}>
-      <WidthRoot
-        className={cx('relative isolate overflow-hidden bg-bg', phone ? 'h-full max-h-[844px] w-[390px] max-w-full rounded-xl border border-wire-strong shadow-panel' : 'h-full w-full')}>
-        <div className="h-full" style={{ transform: 'translateZ(0)' }}>
-          {content}
-          {d.panel && (
-            <ClientForm key={`${d.panel}-${d.form}`} mode={d.panel} state={d.form} online={d.online}
-              onClose={() => set({ panel: null, form: 'idle' })} onSave={() => set({ form: 'saving' })} onDelete={() => set({ confirmDelete: true })} />
-          )}
-          {d.confirmDelete && (
-            <ConfirmDialog danger title={t.deleteClient.title(clients[0].name)} body={t.deleteClient.body}
-              confirmLabel={t.deleteClient.confirm} cancelLabel={t.common.cancel}
-              onConfirm={() => set({ ...base })} onCancel={() => set({ confirmDelete: false })} />
-          )}
-          {d.toast && <Toast text={d.toast} />}
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        {/* WIDTH → PHONE FRAME: the app in a phone-sized box on the computer's screen. Its layout follows the box's width (useWide), and its
+            overlays are drawn inside it (the frame's overlay root carries the transform), so the phone layout can be seen as it would be. */}
+        <div className={cx('h-full', phone && 'flex items-center justify-center bg-raised p-4')}>
+          <div className={cx(phone ? 'h-full max-h-[844px] w-[390px] max-w-full overflow-hidden rounded-xl border border-wire-strong shadow-panel' : 'h-full w-full')}>
+            {/* Drawn afresh for each state applied from the menu: a state never inherits what the last one left on screen. */}
+            <AppRoutes key={applied} />
+          </div>
         </div>
-      </WidthRoot>
-      <DemoButton />
-      {d.menuOpen && <DemoMenu />}
-    </div>
+        <DemoButton />
+        {menuOpen && <DemoMenu />}
+      </MemoryRouter>
+    </QueryClientProvider>
   )
 }

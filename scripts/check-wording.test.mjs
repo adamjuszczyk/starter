@@ -21,7 +21,7 @@
 //     .eq, .order, .rpc, ...): a column list such as 'id, name, phone' is names. So is the value of a NON_TEXT_ATTRS attribute (className,
 //     id, to, path, type, ...) or a data-* attribute, through a ternary, `??`, `&&`, `+`, parentheses and a template: a class list is
 //     written in `className` (a literal, a ternary, a `+`, a template), or one class to a string anywhere else (`cx('flex', 'gap-2')`;
-//     `cx('flex gap-2')` is a hit, DECISIONS 58). The same text in JSX text, in a TEXT_ATTRS attribute (placeholder, title, aria-label,
+//     `cx('flex gap-2')` is a hit, DECISIONS 64). The same text in JSX text, in a TEXT_ATTRS attribute (placeholder, title, aria-label,
 //     alt, label, confirmLabel, ...), or as a capitalised or multi-word string ('Zapisz', 'Nie udało się') is words.
 //   - Not read as words either: an import or export path, a type (a string in a type position), text with no letter in it (punctuation,
 //     spaces, digits: the "·" of the build line, " *" after a required label, an HTML entity such as &nbsp; or &times; in JSX text).
@@ -82,6 +82,24 @@ const TEXT_ATTRS = new Set([
 // The allowlist: { file, family, text, reason }. `text` is the whole string as the scanner reads it (trimmed, whitespace collapsed).
 // An entry that matches nothing fails the "no stale entry" test.
 export const ALLOWED = [
+  {
+    file: 'src/components/overlay.ts',
+    family: 'words',
+    text: 'Escape',
+    reason: "DECISIONS 67: the value of KeyboardEvent.key that closes the top overlay (`event.key === 'Escape'`); a key name the browser reports, compared and never drawn on a screen",
+  },
+  {
+    file: 'src/components/overlay.ts',
+    family: 'words',
+    text: 'Tab',
+    reason: "DECISIONS 67: the value of KeyboardEvent.key that the overlay's focus ring acts on (`event.key === 'Tab'`); a key name the browser reports, compared and never drawn on a screen",
+  },
+  {
+    file: 'src/components/Table.tsx',
+    family: 'words',
+    text: 'Enter',
+    reason: "DECISIONS 67: the value of KeyboardEvent.key that opens a focused table row (Enter, beside the space key); a key name the browser reports, compared and never drawn on a screen",
+  },
   {
     file: 'src/features/pwa/useServiceWorker.ts',
     family: 'words',
@@ -364,7 +382,7 @@ test('words: a class list is a className (a literal, a ternary, a +, a template)
     "const BASE = ['inline-flex', 'items-center', 'justify-center', 'disabled:opacity-50', 'hover:bg-raised']",
   ];
   assert.deepEqual(wordsOf('a.tsx', ok.join('\n')), []);
-  // ...but a class list with a space in it, handed to anything else, is words (DECISIONS 58: one class to a string)
+  // ...but a class list with a space in it, handed to anything else, is words (DECISIONS 64: one class to a string)
   assert.deepEqual(wordsOf('a.tsx', "const A = () => <div className={cx('flex gap-2')} />"), ['flex gap-2'], 'cx(\'a b c\') with a multi-word string is a hit');
   assert.deepEqual(wordsOf('a.tsx', "const BASE = ['inline-flex items-center']"), ['inline-flex items-center']);
   assert.deepEqual(wordsOf('a.tsx', "const A = () => <NavLink className={({ isActive }) => (isActive ? 'bg-accent text-on-accent' : 'text-ink')} />"), ['bg-accent text-on-accent'], 'a className given by a function is not read as a className');

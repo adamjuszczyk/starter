@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { pl as t } from './i18n/pl'
 import { resetTheme } from './features/settings/useTheme'
+import { useToastStore } from './features/notifications/toastStore'
 
 // App.tsx's own route table (<AppRoutes/>, exported for this), mounted under this test's MemoryRouter instead of App()'s BrowserRouter, as
 // Overload's App.test.tsx does: the same routes, without AuthProvider's and the router's side effects. The pages are one-line stand-ins
@@ -59,6 +60,7 @@ beforeEach(() => {
   localStorage.clear()
   html.removeAttribute('data-theme')
   resetTheme()
+  useToastStore.getState().clear()
 })
 afterEach(() => cleanup())
 
@@ -149,5 +151,28 @@ describe('the theme is applied above everything', () => {
     state.auth = { ...state.auth, ...auth }
     renderAt('/settings')
     expect(html.getAttribute('data-theme')).toBe('dark')
+  })
+})
+
+describe('the toast', () => {
+  const toasts = () => document.querySelectorAll('[data-overlay="toast"]')
+
+  // DECISIONS 70: chunk 6 built the toast and left it unmounted; the app's frame mounts it once, so a message shown from anywhere is drawn.
+  it('is mounted once in the frame: a message put in the store is drawn inside the frame, once, on the app and on the sign-in page alike', () => {
+    state.auth = { ...state.auth, user: SIGNED_IN }
+    renderAt('/settings')
+    expect(toasts()).toHaveLength(0)
+
+    act(() => useToastStore.getState().show(t.common.saved))
+    expect(toasts()).toHaveLength(1)
+    expect(toasts()[0].textContent).toContain(t.common.saved)
+    expect(toasts()[0].closest('[data-layout]')).not.toBeNull()
+    cleanup()
+
+    // The message is still in the store: the sign-in page's frame draws it too, and it is the only one.
+    state.auth = { ...state.auth, user: null }
+    renderAt('/settings')
+    expect(toasts()).toHaveLength(1)
+    expect(toasts()[0].closest('[data-layout]')).not.toBeNull()
   })
 })
