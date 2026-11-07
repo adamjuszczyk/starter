@@ -159,3 +159,21 @@ Chunk: 8   Date: 2026-11-07
 Recommendation: `virtual:pwa-register/react` is aliased to a no-op in `prototype/vite.config.ts`.
 Answer: coordinator. Reason: the module exists only under the app's PWA plugin, so the kit could not resolve `AppRoutes`' import chain; an alias keeps the swap list at five.
 Evidence: chunk 8 report, card 2.
+
+## 73 The meter is `get_session`'s `usage.cost_usd` from 01:25
+Chunk: 8–9   Date: 2026-11-07
+Recommendation: from the first reading at 01:25 the session's own `usage.cost_usd` is the meter; DECISIONS 50's derived figure is kept only for the earlier per-chunk lines (× 0.73 to compare).
+Answer: coordinator. Reason: the field the brief named appeared about four hours into the session; at 01:25 it read $111.13 where the derived meter read $152.2, so the derived one overcounted by ≈ 37%.
+Evidence: `get_session` at 01:25 and 01:34; CONTEXT.md.
+
+## 74 L239 is the one exception to "every flagged migration is a card"
+Chunk: 9   Date: 2026-11-07
+Recommendation: as Overload's L239 (Adam's rule, 2026-10-05/10): a flagged migration that changes no existing row is merge-ready with no card once the replay, the embeds check and the reviewer's count-and-fingerprint check pass; a destructive one always comes to Adam.
+Answer: coordinator, as built, pending Adam's confirmation at the build's end (it is his own Overload rule, now in a template every app inherits). The B3 reviewer suggests adding "and verify-rls on the replay passes", since replacing a function or view can change access without changing a row.
+Evidence: chunk 9 report, card 1; B3 review.
+
+## 75 A branch is brought up to date by merging the base in, by the coordinator
+Chunk: 9   Date: 2026-11-07
+Recommendation: the definitions say "the coordinator brings it up to date"; RULES.md carries L543 (merge the base into the branch, never force-push).
+Answer: coordinator. Reason: a rebase needs a force-push, which the classifier refused in Overload; an agent's run ends at its report, so the reviewer cannot do it between merges (LEARNINGS B7).
+Evidence: chunk 9 report, card 2.
