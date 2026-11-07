@@ -170,3 +170,9 @@ Stage: build (chunk 11)
 What happened: Adam's decision (written from the coordinator's card) named supabase-js `signOut` with `scope: 'local'` as the device sign-out; on the lockfile's version it still asks the server and keeps the session when that fails. The builder probed the real client before building, and the test Adam asked for (a real client, no network, no session left) would have caught it anyway. Fixed by removing the stored session first (DECISIONS 81).
 Possible change: a card that names a library call as the mechanism says "probed on the real client" or names the behaviour only; builders probe a named library behaviour before building on it.
 Verdict:
+
+## B18 Release notes have no stated audience   status: open
+Stage: release / close
+What happened: the 0.1.0 notes (`docs/release-0.1.0-notes.md`) were written as an agent's build log, with decision numbers, debugging detail, "Decisions Adam made" and "this loosens a data-safety check", and were about to become the public GitHub Release. Adam published a short public summary instead; the notes stay as the internal record.
+Possible change: BUILD.md says public notes are written for a reader in plain words, a few lines; the record in `docs/` stays for agents.
+Verdict:
