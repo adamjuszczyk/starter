@@ -120,6 +120,8 @@ const R = {
   alterTable: re(String.raw`^ALTER TABLE (?:IF EXISTS )?(?:ONLY )?(${QNAME}) (.+)$`),
   createPolicy: re(String.raw`^CREATE POLICY ${IDENT} ON (${QNAME})`),
   grant: re(String.raw`^GRANT .+? ON (?:TABLE )?(${QNAME}) TO `),
+  // A revoke names one table or several (`revoke all on table a, b from anon`), as the starter's migrations write it (Decided 39).
+  revoke: re(String.raw`^REVOKE .+? ON (?:TABLE )?(${QNAME}(?:, ?${QNAME})*) FROM `),
   insert: re(String.raw`^INSERT INTO (${QNAME})`),
 };
 
@@ -168,6 +170,13 @@ function classifyStatement(stmt, created) {
   if ((m = R.grant.exec(stmt))) {
     if (created.has(normName(m[1]))) return null;
     return 'grant on an existing table';
+  }
+  // Like a grant, a revoke is safe only on a table this batch creates: nobody has rights on it yet, so nothing is taken away from anyone
+  // (Decided 39 asks for `revoke all … from public, anon, …` in the migration that creates an own or signed-in table). On any other table it
+  // can cut off access the app relies on, so it stays flagged; so does a revoke that names one table of this batch and one that is not.
+  if ((m = R.revoke.exec(stmt))) {
+    if (splitTopLevelCommas(m[1]).every(t => created.has(normName(t)))) return null;
+    return 'revoke on an existing table';
   }
   if ((m = R.insert.exec(stmt))) {
     if (created.has(normName(m[1])) && !/\bDO UPDATE\b/i.test(withoutStrings(stmt))) return null;
