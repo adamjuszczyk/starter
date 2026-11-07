@@ -1,8 +1,12 @@
-@import "./styles/global.css";
-@import "./styles/tokens.css";
+/* The real app's styles, then the kit's own. global.css brings Tailwind with `source("..")`, which makes it scan src/ and nothing else (it is
+   relative to that file), so the classes the kit's own files use (the DEMO menu, the example screens, the design page) need a source of
+   their own: the @source line below, relative to this file. Without it they are not built and the example draws unstyled. */
+@import "../../src/styles/global.css";
+@import "../../src/styles/tokens.css";
+@source "./";
 
-/* Lifted from Overload's prototype/src/index.css (lesson L6): the page host's
-   own base styles are unlayered and beat the app's @layer base, so the base
-   background, text colour and font are restated here, unlayered. */
+/* Lifted from Overload's prototype/src/index.css (lesson L6): a page host's own base styles are unlayered and beat the app's `@layer base`
+   (published as a page, the prototype's background stayed light in dark mode), so the base background, text colour and font are restated here,
+   unlayered. tokens.css is unlayered too and sets the colour scheme itself. */
 html, body, #root { height: 100%; }
 body { margin: 0; background: var(--base); color: var(--text-primary); font-family: var(--font-sans); font-size: var(--fs-base); }

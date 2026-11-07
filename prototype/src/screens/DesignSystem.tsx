@@ -1,14 +1,20 @@
 import type { ReactNode } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import { Badge, Button, InlineError, OfflineStrip, SelectField, TextField, cx } from '../components/ui'
-import { Table } from '../components/Table'
-import { useWide } from '../lib/useWide'
-import { clients } from '../demo/fixtures'
-import { formatDate, formatMoney, formatPhone } from '../lib/format'
+import { Badge } from '@app/components/Badge'
+import { Button } from '@app/components/Button'
+import { SelectField, TextField } from '@app/components/fields'
+import { InlineError } from '@app/components/InlineError'
+import { OfflineStrip } from '@app/components/OfflineStrip'
+import { Table } from '@app/components/Table'
+import { cx } from '@app/lib/cx'
+import { formatDate, formatMoney, formatPhone } from '@app/lib/format'
+import { useWide } from '@app/lib/useWide'
+import { clients } from '../examples/clients/fixtures'
 
 // The design system on one page, for the spec chat and for builders: every
-// token and base component, live. Not a screen of the app (DEMO only), so its
-// labels are English and not in the words file.
+// token and base component, live (the real ones, from src/components). Not a
+// screen of the app (DEMO only), so its labels are English and not in the
+// words file.
 
 const COLOURS: [string, string][] = [
   ['--base', 'Page'], ['--surface', 'Card, panel'], ['--surface-raised', 'Raised, hover'], ['--surface-overlay', 'Dialog'],

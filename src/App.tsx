@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from './features/auth/useAuth'
 import LoginPage from './features/auth/LoginPage'
 import { useTheme } from './features/settings/useTheme'
 import { OfflineStrip } from './components/OfflineStrip'
+import { Toast } from './components/Toast'
 import { AppShell } from './shell/AppShell'
 import { TABS } from './shell/tabs'
 import { pl as t } from './i18n/pl'
@@ -70,6 +71,9 @@ export function AppRoutes() {
           </Routes>
         </AppShell>
       )}
+      {/* The toast, once, for the whole app (DECISIONS 70): it draws into this frame's overlay root, so it is above whatever page is showing, a
+          panel and a dialog included, and anything can show a message through the store (src/features/notifications/toastStore.ts). */}
+      <Toast />
     </WidthRoot>
   )
 }

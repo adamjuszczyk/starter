@@ -1,9 +1,13 @@
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { cx } from '../lib/cx'
 
-// The desktop table (new: Overload has none), lifted from the prototype's Table.tsx. A header row, rows that open on click, and skeleton rows
-// while the list loads. A long text wraps inside its cell; the table scrolls sideways inside its own box, never the page. The phone's list is
-// ListRows. The caller gives every word: the column headers and the table's name (`label`, for a screen reader).
+// The desktop table (new: Overload has none), lifted from the prototype's Table.tsx. A header row, rows that open on a click or from the
+// keyboard, and skeleton rows while the list loads. A long text wraps inside its cell; the table scrolls sideways inside its own box, never the
+// page. The phone's list is ListRows. The caller gives every word: the column headers and the table's name (`label`, for a screen reader).
+//
+// A row that opens is focusable (Tab reaches it) and opens on Enter and Space, which the prototype's rows do not (they are a pointer's): an office
+// user at a keyboard could not open a record otherwise. Only a key pressed on the row itself opens it: a control inside a cell keeps its own Enter
+// and Space. Added in chunk 8 as a behaviour change the prototype does not show; CONTEXT.md lists it for the release batch (keep, or mouse only).
 export interface Column<T> {
   key: string
   header: string
@@ -28,6 +32,15 @@ const SKELETON_CELL = ['h-14', 'px-4']
 const BAR = ['block', 'h-3', 'rounded-sm', 'bg-raised']
 const RIGHT = 'text-right'
 
+/** Whether this key press opens the row it was pressed on: Enter or Space, on the row itself (not bubbled up from a control in a cell). */
+function opensRow(event: KeyboardEvent<HTMLTableRowElement>): boolean {
+  if (event.target !== event.currentTarget) return false
+  if (event.key !== 'Enter' && event.key !== ' ') return false
+  // Space would otherwise scroll the page.
+  event.preventDefault()
+  return true
+}
+
 export function Table<T extends { id: string }>({
   columns,
   rows,
@@ -38,7 +51,7 @@ export function Table<T extends { id: string }>({
   columns: Column<T>[]
   rows: T[]
   loading?: boolean
-  /** Makes every row open on a click (a pointer only: the row is not a control of its own), and gives it the pointer and the hover. */
+  /** Makes every row open on a click, or on Enter or Space once Tab has reached it, and gives it the pointer and the hover. */
   onRowClick?: (row: T) => void
   label: string
 }) {
@@ -66,7 +79,13 @@ export function Table<T extends { id: string }>({
                 </tr>
               ))
             : rows.map((r) => (
-                <tr key={r.id} onClick={onRowClick ? () => onRowClick(r) : undefined} className={cx(ROW, onRowClick && ROW_OPENS)}>
+                <tr
+                  key={r.id}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onClick={onRowClick ? () => onRowClick(r) : undefined}
+                  onKeyDown={onRowClick ? (event) => opensRow(event) && onRowClick(r) : undefined}
+                  className={cx(ROW, onRowClick && ROW_OPENS)}
+                >
                   {columns.map((c) => (
                     <td key={c.key} className={cx(CELL, c.numeric && RIGHT)}>
                       {c.render(r)}

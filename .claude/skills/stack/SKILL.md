@@ -247,6 +247,8 @@ Forward-only: an applied migration is never edited. Destructive ones come to Ada
 
 Panel is Overload's `BottomSheet` (Decided 6), and the rules below name Overload's components and props. `src/components/` (chunk 6) is the authority: where a rule names a prop, a role or a marker the component does not have, the component wins and the line is fixed.
 
+Panel, ConfirmDialog and Toast draw through one overlay module (`src/components/overlay.ts`) into the frame's overlay root (`useOverlayRoot()`: the element `WidthRoot` gives `transform: translateZ(0)`), not into `document.body`, so they stay inside the prototype kit's phone frame, and outside a frame they draw nothing. Each carries `data-overlay` (`panel`, `dialog`, `toast`). The one drawn last owns Escape and the Tab ring and takes focus; a toast is passive (no focus, no key, no touch). Panel is `role="dialog"` and ConfirmDialog is `role="alertdialog"`: the component, not Overload, is the authority. The Toast is mounted once, by `AppRoutes`; anything shows a message through `useToastStore`. (chunk 6, DECISIONS 70, chunk 8)
+
 - Something inside a sheet that handles Escape itself calls `preventDefault()` on it, or the sheet (the top one) closes too. (L392)
 - A sheet whose list changes length with a filter is `height="tall"` with the filter row in `toolbar`: the content region is the one scroller, so what must stay in view goes in `toolbar` or `footer`. (L393)
 - A sheet that awaits a write and then calls back checks it is still mounted, with a ref set true on every effect run: StrictMode reruns effects after cleanup. (L395)

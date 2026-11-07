@@ -2,6 +2,14 @@
 
 The record of finished work and what CONTEXT.md no longer needs to say (BUILD.md 2.2: finished work and build logs live here; CONTEXT.md holds only the current state, and pruning it is a move into this file). Newest entry first. Read it only to trace why something is the way it is.
 
+## 2026-11-07 — chunk 9 (agent definitions, the RULES.md folds, NEXT.md)
+
+Builder 00:20–00:49 (28 min). B3 review: merge-ready; ≈ 25 folds read against Overload's lines; L239 worded so a destructive migration still reaches Adam (DECISIONS 74). RULES.md's "Checks that lied" now points at the stack skill. Merged as PR #11 after bringing it up to date with `main`.
+
+## 2026-11-07 — chunk 8 (the prototype kit and the `prototype` skill)
+
+Builder 00:37–01:23 (46 min). Reference set taken from the last planning commit's `prototype/` before the kit changed it. B3 review 01:25–01:34 with chunks 9 and 10: merge-ready; the kit's 80 shots against the reference differ by at most 0.013% (the DEMO tab's font); the reference re-shot from the frozen prototype matched. Merged as PR #10.
+
 ## 2026-11-07 — chunk 7 (the stack and estimate skills, the cost table)
 
 Builder 23:45–00:12; found that Decided 39's revoke is flagged by `check-migration` (LEARNINGS B12); follow-up 00:14–00:20 (DECISIONS 69). B2 review: merge-ready; the loosened check probed with 25 adversarial statements; all 148 GENERAL-CODE lines cited. Merged as PR #9 after a rebase on `main`.
