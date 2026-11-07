@@ -17,4 +17,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// The key supabase-js keeps the session under in the browser's localStorage. It is supabase-js's own default (`sb-<project>-auth-token`, from
+// the project's host name; SupabaseClient.ts, auth-js 2.110.0), written out and handed back to it, so a sign-out that cannot reach the server
+// can name the session it has to remove from this device (features/auth/authService.ts, `signOut`). Nothing changes for a session already
+// stored: the key is the one it was stored under.
+export const AUTH_STORAGE_KEY = `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, { auth: { storageKey: AUTH_STORAGE_KEY } })

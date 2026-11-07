@@ -92,8 +92,10 @@ describe('sign-out', () => {
     expect(signOutButton().disabled).toBe(false)
   })
 
-  it('a sign-out that fails (no connection) leaves the person signed in and the button as it was', async () => {
-    service.signOut.mockRejectedValue(new Error('Failed to fetch'))
+  // The service resolves when there is no connection (it signs out on this device: authService.signOut.test.ts, App.signOut.test.tsx); what it
+  // throws is a sign-out that failed with the session still on the device, such as a server that answered with an error.
+  it('a sign-out that fails (the service throws) leaves the person signed in and the button as it was', async () => {
+    service.signOut.mockRejectedValue(new Error('Bad Gateway'))
     await renderPage()
 
     await act(async () => {

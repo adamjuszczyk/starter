@@ -15,3 +15,7 @@ const chain: any = new Proxy(function () {}, {
 })
 
 export const supabase = chain
+
+// The key the real client keeps its session under (src/lib/supabase.ts). The real authService.ts, which the kit still loads for its error class,
+// imports it for the sign-out that has no connection; the kit's own authService (fakes/authService.ts) never calls that, so it is a stand-in.
+export const AUTH_STORAGE_KEY = 'sb-prototype-auth-token'

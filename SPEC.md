@@ -250,6 +250,11 @@ Every screen is in the prototype; open DEMO for its states. Words here only for 
   `signIn.offline` ("Brak połączenia. Spróbuj ponownie, gdy wróci."); any other failure shows `signIn.failed` with the
   reason, as Overload's sign-in does. Never Supabase's raw message alone. (Amended 2026-11-06: the first wording would
   have told an offline user their password was wrong.)
+- **Sign-out** (from Settings and the side menu): when the server can't be reached, the person is signed out on this device
+  anyway (the stored session removed, then supabase-js `signOut` with `scope: 'local'`; that call alone still asks the
+  server and keeps the session when it fails: DECISIONS 81), the cache is cleared, and the sign-in screen shows. (Amended
+  2026-11-07, Adam: on a shared office computer, a sign-out that silently does nothing leaves the next person in
+  someone else's account. DECISIONS 77.)
 - **Settings:** the build line (version · build hash · build time) stays at the bottom, as in Overload.
 - **The words** on these screens are in `prototype/src/i18n/pl.ts`, word for word. The starter has no forbidden words yet.
 

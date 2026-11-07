@@ -52,16 +52,11 @@ What this build found, one line each:
 - The kit's 80 built pictures were compared with the 80 frozen prototype pictures by name, pixel by pixel: every state, 390 and 1280 px, light and dark. Differences are only the rotated "DEMO" tab label's edge pixels (anti-aliasing) in every picture, and 3 edge pixels of the dialog's corner in the two desktop Delete states. No clipping found. The built pictures are in `design/0.1/built/`.
 - All scripts, typecheck, build, the build check, the replay, verify-rls (fixture and app), the embeds check, the context-size check and the checklist page check pass; the full vitest suite passes (255 tests) and the script tests pass (290, none skipped, the checklist page's browser tests included).
 
-## Decisions Adam is asked to confirm
+## Decisions Adam made after the release check (2026-11-07, DECISIONS 77–81)
 
-Built as noted; none blocks the tag.
-
-1. **Signing out with no connection** leaves the person signed in with no message (supabase-js keeps the session when the logout request fails). Options: as built / show a message (one new word) / sign out on the device anyway.
-2. **Supabase "Automatic branching"** is left off at the checklist's step 3 (it adds paid per-PR environments; the replay already covers migrations). Options: as built / turn it on.
-3. **The checklist and its test ship in every app made from the template.** Options: leave them / the hand-off tells the first build to delete them.
-4. **L239 as the one exception** to "every flagged migration is a card" (DECISIONS 74): your own Overload rule, now in a template every app inherits. The reviewer suggests adding "and verify-rls on the replay passes", since replacing a function or view can change access without changing a row.
-5. **Desktop table rows open from the keyboard** (Enter or Space), which the prototype's rows don't. Built as the recommendation, so a keyboard-only office user can open a row. Options: keep / mouse only.
-6. **DECISIONS 69** (above) loosened a data-safety check; this is the build's end notice that it did.
+1. **Signing out with no connection signs out on this device** (chunk 11): the stored session is removed, supabase-js signs out locally, the cache is cleared and the sign-in screen shows. A test with the real client and no network proves no session is left on the device. (supabase-js's `signOut({ scope: 'local' })` alone still asks the server and keeps the session when that fails, so the stored session is removed first: DECISIONS 81.)
+2. **L239's exception** to "every flagged migration is a card" now also needs verify-rls on the replay to pass (RULES.md "Escalation", DECISIONS 78).
+3. **Confirmed as built:** the loosened revoke check (DECISIONS 69), desktop table rows opening from the keyboard, Supabase "Automatic branching" off at the checklist's step 3, the checklist and its test in every app made from the template (DECISIONS 79).
 
 ## The vibe check
 

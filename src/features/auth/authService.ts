@@ -1,5 +1,5 @@
 import { isAuthApiError, isAuthRetryableFetchError } from '@supabase/supabase-js'
-import { supabase } from '../../lib/supabase'
+import { AUTH_STORAGE_KEY, supabase } from '../../lib/supabase'
 
 // Signing in and out, around the Supabase client: the one place a screen's sign-in reaches it (SPEC Rule 4, TASKS.md Decided 7).
 //
@@ -40,9 +40,17 @@ function isFetchFailure(error: unknown): boolean {
   return error instanceof TypeError
 }
 
+/**
+ * The server could not be reached: the request got no answer, or the device itself says it has no connection (DECISIONS 65). One rule for a
+ * sign-in, which shows `offline`, and a sign-out, which then signs out on this device alone.
+ */
+function hasNoAnswer(error: unknown): boolean {
+  return isFetchFailure(error) || navigator.onLine === false
+}
+
 function classify(error: unknown): SignInError {
   if (isAuthApiError(error) && error.code === INVALID_CREDENTIALS) return new SignInError('wrong')
-  if (isFetchFailure(error) || navigator.onLine === false) return new SignInError('offline')
+  if (hasNoAnswer(error)) return new SignInError('offline')
   const reason = error instanceof Error ? error.message : String(error)
   return new SignInError('failed', reason || undefined)
 }
@@ -58,11 +66,44 @@ export async function signIn(email: string, password: string): Promise<void> {
   }
 }
 
+/** supabase-js's own sign-out. Resolves with what went wrong, or null; a thrown error is taken the same way as a resolved `{ error }`. */
+async function askServerToSignOut(): Promise<{ error: unknown } | null> {
+  try {
+    const { error } = await supabase.auth.signOut()
+    return error ? { error } : null
+  } catch (error) {
+    return { error }
+  }
+}
+
 /**
- * Signs out. Throws the error supabase-js resolves with: a sign-out asks the server to end the session, and with no connection the request
- * fails and supabase-js keeps the session, so the person is still signed in and the caller must not act as if they were out.
+ * Ends the session on this device without the server. supabase-js's `signOut({ scope: 'local' })` is not that by itself: it still asks the
+ * server first, and with no answer it returns the error and keeps the session, as the default scope does (auth-js 2.110.0, `_signOut`;
+ * authService.signOut.test.ts shows it on the real client). So the stored session is removed first. With none stored, `signOut({ scope:
+ * 'local' })` has nothing to ask the server about and does the rest itself: it removes what else it keeps and tells the app (SIGNED_OUT),
+ * which is how `useAuth` clears the cache and the sign-in screen shows, as after any sign-out. The session stays valid on the server until it
+ * expires: with no connection there is no way to end it there.
+ */
+async function signOutOnThisDevice(): Promise<void> {
+  try {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+  } catch {
+    // Storage the browser will not let the page touch: supabase-js keeps the session in memory then, and the local sign-out below finds it,
+    // asks the server and fails as the first sign-out did. The person is still signed in, and this throws.
+  }
+  const { error } = await supabase.auth.signOut({ scope: 'local' })
+  if (error) throw error
+}
+
+/**
+ * Signs out. The server is asked to end the session first, as supabase-js does it. When the server cannot be reached (the same "no answer"
+ * as a sign-in's `offline`) the person is signed out on this device anyway and this resolves: on a shared computer a sign-out that silently
+ * does nothing leaves the next person in someone else's account (SPEC Screens as amended 2026-11-07, DECISIONS 77). Any other failure, a
+ * server that answered with an error, is thrown as it came: the session is still on this device, so the caller must not act as if it ended.
  */
 export async function signOut(): Promise<void> {
-  const { error } = await supabase.auth.signOut()
-  if (error) throw error
+  const failure = await askServerToSignOut()
+  if (!failure) return
+  if (!hasNoAnswer(failure.error)) throw failure.error
+  await signOutOnThisDevice()
 }
