@@ -147,3 +147,15 @@ Chunk: 6   Date: 2026-11-07
 Recommendation: chunk 8 mounts `<Toast />` once inside `AppRoutes`' `WidthRoot`, with an `App.test` assertion.
 Answer: coordinator. Reason: `App.tsx` is chunk 4's, outside chunk 6's scope, and nothing in `src/` shows a toast until a write exists (SPEC Rule 3, Decided 36).
 Evidence: chunk 6 report, card 2.
+
+## 71 The kit's example screens enter the real route table at load
+Chunk: 8   Date: 2026-11-07
+Recommendation: the kit pushes its example tab into the real `TABS` array at load (as a build edits `tabs.ts`) and takes it out for "New app: what you get"; the design-system page is a DEMO-only view inside that tab.
+Answer: coordinator. Reason: nothing in `src/` changes and the kit's swap list stays at five (no copy of a `src/shell` file); it fails loudly at load if `tabs.ts` ever freezes the array.
+Evidence: chunk 8 report, card 1; B3 review.
+
+## 72 The kit aliases the PWA's virtual module to a no-op
+Chunk: 8   Date: 2026-11-07
+Recommendation: `virtual:pwa-register/react` is aliased to a no-op in `prototype/vite.config.ts`.
+Answer: coordinator. Reason: the module exists only under the app's PWA plugin, so the kit could not resolve `AppRoutes`' import chain; an alias keeps the swap list at five.
+Evidence: chunk 8 report, card 2.
