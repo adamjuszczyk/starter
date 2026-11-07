@@ -164,3 +164,9 @@ Stage: release
 What happened: the estimate was ≈ 8.1 h of running and ≈ $170 (upper bound 9.3 h, $196). The build ran 21:21–01:55 UTC, ≈ 4.6 h of wall clock including setup, the 6-minute stop and the release, and ended at ≈ $122 on the meter. LIGHT builders took 22–46 min (planned ≈ 30) but batch reviews took 9–11 min (planned ≈ 40), and no 5-hour-window pause came. Every chunk merged on its first or second review; three got follow-ups before merge.
 Possible change: the cost table's third calibration (the close) takes this build's per-chunk lines: LIGHT S/M/L and DATA separately, batch reviews at ≈ 10 min, and the meter's figures (the derived ones × 0.73).
 Verdict:
+
+## B17 A decision named a library call that does not do what it said   status: open
+Stage: build (chunk 11)
+What happened: Adam's decision (written from the coordinator's card) named supabase-js `signOut` with `scope: 'local'` as the device sign-out; on the lockfile's version it still asks the server and keeps the session when that fails. The builder probed the real client before building, and the test Adam asked for (a real client, no network, no session left) would have caught it anyway. Fixed by removing the stored session first (DECISIONS 81).
+Possible change: a card that names a library call as the mechanism says "probed on the real client" or names the behaviour only; builders probe a named library behaviour before building on it.
+Verdict:

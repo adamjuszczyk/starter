@@ -2,6 +2,12 @@
 
 The record of finished work and what CONTEXT.md no longer needs to say (BUILD.md 2.2: finished work and build logs live here; CONTEXT.md holds only the current state, and pruning it is a move into this file). Newest entry first. Read it only to trace why something is the way it is.
 
+## 2026-11-07 — chunk 11 (sign-out with no connection)
+
+Builder 10:02–10:36 (34 min) plus a skill follow-up: probed supabase-js 2.110.0 first and found `signOut({ scope: 'local' })` still asks the server and keeps the session on failure, so the device sign-out removes the stored session first (DECISIONS 81; SPEC's wording and the release notes corrected; LEARNINGS B17). Two questions for Adam (answered server errors; the 25-second wait with an expired token). Review 10:40–10:44: merge-ready, the probe re-run on the real client. Merged as PR #14. ≈ $14 on the meter.
+
+**No longer true, moved here from CONTEXT.md.** "**Chunk 11 building: sign-out with no connection (2026-11-07 10:05 UTC); the tag waits on it.** Chunks 0–10 and the release step are merged into `main` (PRs #1–#13, squash); the release check was clean (no layout, wording, colour or state difference from the prototype in any of the 20 states; every script green). Adam's answers of 2026-11-07 (DECISIONS 77–80): the offline sign-out is fixed before …"
+
 ## 2026-11-07 — Adam's answers after the release check
 
 Adam answered the release batch at about 09:55 (DECISIONS 77–80): the offline sign-out is fixed before the tag (chunk 11); L239's exception also needs verify-rls on the replay; the rest confirmed as built; the Docker Hub line came back unfilled and the secret still answered Bearer. SPEC "Screens" amended (sign-out). Records committed on `build/chunk-11` so they merge with the fix.

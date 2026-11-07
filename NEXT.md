@@ -10,6 +10,7 @@
 - Desktop Table rows that open from the keyboard show only the browser's default focus outline (no focus style of their own).
 - Decided 49 names `own` tables only for the `user_id` column; `signed-in` tables need it too (verify-rls's peer probe counts by it). The stack skill says both.
 - The checklist's Windows cmd lines have never run on Windows, and its shared store has never held a real write: Adam's first new app is the test.
+- CI (`migration-replay.yml`) runs `npm run check` (the script tests) but not vitest, so every `src/` test, chunk 11's real-client sign-out proof included, runs only under `npm test`: a supabase-js upgrade in an app could break the device sign-out unnoticed until then.
 - The cost table's third calibration from this build's figures (LEARNINGS B16), at the close.
 
 ## Offline writing add-on: rules kept aside

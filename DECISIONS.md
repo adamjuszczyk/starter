@@ -207,3 +207,9 @@ Chunk: 10   Date: 2026-11-07
 Recommendation: CI (no Playwright) skips the 17 browser tests with the reason shown; reviewers and the release run them with `CHECKLIST_REQUIRE_BROWSER=1`, which fails when the browser is absent.
 Answer: coordinator. Reason: adding Playwright to the shared workflow is a dependency for one page; a skip that says so is not a pass, and the reviewer runs it for real.
 Evidence: chunk 10 report, card 1; B3 review (29/29, 0 skipped).
+
+## 81 The device sign-out removes the stored session first
+Chunk: 11   Date: 2026-11-07
+Recommendation: on no answer, remove the stored session under the client's pinned `storageKey` (`src/lib/supabase.ts` exports `AUTH_STORAGE_KEY`, supabase-js's own default, so existing sessions keep their key), then `signOut({ scope: 'local' })`, which with nothing stored makes no request, removes every key and fires `SIGNED_OUT`.
+Answer: coordinator. Reason: in supabase-js 2.110.0 `signOut({ scope: 'local' })` still sends `POST /logout` and keeps the session when it fails (probed on the real client by the builder and the reviewer), so SPEC's parenthetical alone would not have signed anyone out; documented options only, and the library still tells the app (and other tabs) it signed out. SPEC's wording corrected.
+Evidence: chunk 11 report, card 1; chunk 11 review.
