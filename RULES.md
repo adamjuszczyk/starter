@@ -309,7 +309,7 @@ BUILD.md 2.1's, for every build:
 | Audits | most capable | max |
 
 ## Checks that lied
-Starts empty: chunk 9 fills nothing into this section; the stack skill holds the lifted code rules.
+The lifted code checks that lied are in the `stack` skill (`.claude/skills/stack/SKILL.md`, "Checks that passed while wrong"); a check found lying during a build is added here the session it is found, with its source.
 
 ## Rules discovered during builds
 Starts empty: chunk 9 fills nothing into this section; the stack skill holds the lifted code rules.
