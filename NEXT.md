@@ -4,7 +4,9 @@
 ## Planned, not built
 
 ### Left over from 0.1 (2026-11-07)
-- The weekly share was not read during the 0.1 build, so the cost table's third calibration has dollars and hours only: the next build reads the week at its start and its end.
+- The week was read only at the build's start (19%) and at the retro (32%): ≈ $11.3 per 1% of the Max (5x) week, now in the cost table. The next build reads it at its start and its end (BUILD.md 2.3, step 6).
+- **BUILD.md 2.3 (Starter 0.1 retro, 2026-11-07) for the starter's own files:** the `CONTEXT.md` template's Repo facts get `Starter: vX.Y.Z` and `The meter:` lines, and the checklist's hand-off items 3 and 8 write the `Starter:` line (S1, B1); `RULES.md`'s Escalation follows "Who decides", Reviewer rules get the unsure list, Verification gets the library probe, Usage gets "never wait on a permission prompt" (S3, B6, B17, B10); the agent definitions say the same where they restate those sections.
+- The prototype kit's check also loads the dev server once: a fake that re-exports the real module imports itself only there (LEARNINGS B14, DECISIONS 72).
 - The estimate skill's worked example is the 0.1 estimate on the second calibration; the next estimate uses the third (`scripts/cost-table.md`).
 - Sign-out with an expired token on a network that looks connected but isn't (Wi-Fi up, internet gone; or a server answering 5xx to the refresh) still waits ≈ 25 s while supabase-js retries its refresh before the device sign-out runs; a time limit on the server attempt would cover it (chunk 11, card 3, option c; Adam chose the `navigator.onLine` skip, DECISIONS 83).
 - CI's `npm test` log carries React Router future-flag warnings from `App.test.tsx` and `AppShell.test.tsx` (harmless); passing the router's `future` flags in those tests would silence them.

@@ -6,7 +6,7 @@ Dated 2026-11-07 (the Starter 0.1 close), from the session meter's real figures 
 
 **The meter** is the coordinator session's own cost reading (`get_session`, `usage.cost_usd`, API-equivalent), which counts every agent it starts. In the Starter 0.1 build it appeared about four hours into the session; until then the coordinator summed the transcripts at list prices, which read ≈ 1.34 × the meter (meter = derived × 0.75; LEARNINGS B1). Agents never estimate their own cost.
 
-- **The weekly share was not read in this build** (no week reading was taken at the start or the end), so the figures below are dollars and hours only; 1.2.1's ≈ $11.6 per 1% of the Max (5x) week is the last measured rate.
+- **1% of the Max (5x) weekly limit ≈ $11.3 on the meter** (Starter 0.1: the week 19% at the build's start, 32% at the retro, 2026-11-07, for $147.11; the 32% also holds the retro chat, so the rate is a little low). 1.2.1 measured $11.6. Per chunk below: meter dollars ÷ 11.3.
 
 ## Models (API list prices per million tokens, as used 2026-11-06/07)
 
