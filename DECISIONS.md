@@ -25,6 +25,30 @@ Recommendation: continue as planned; the re-estimate is ≈ $165 and ≈ 5.5–6
 Answer: Adam, 22:36: a) continue as planned. To-do 1 (Docker Hub secret as "basic"): Adam does it. To-do 2 (no tag to delete; the release ends with his two commands): noted.
 Evidence: CONTEXT.md "Where the build is"; LEARNINGS B9.
 
+## 77 Sign-out with no connection: sign out on this device anyway
+Chunk: 11 (new, after the release check)   Date: 2026-11-07
+Recommendation: the release batch offered as built (stays signed in, no message) / a message / sign out locally anyway.
+Answer: Adam, 2026-11-07: fix it before the tag. When the server can't be reached, sign out on this device anyway (supabase-js `signOut` with `scope: 'local'`), clear the cache, and leave the person on the sign-in screen. Reason: on a shared office computer, a sign-out that silently does nothing leaves the next person in someone else's account. One LIGHT chunk with its review; a test that proves an offline sign-out leaves no session on the device. SPEC "Screens" amended.
+Evidence: chunk 4 report, card 2; CONTEXT.md "Questions for the release batch".
+
+## 78 The flagged-migration exception also needs verify-rls on the replay
+Chunk: — (RULES.md)   Date: 2026-11-07
+Recommendation: the B3 reviewer's: add "and verify-rls on the replay passes" to L239's exception (DECISIONS 74), since replacing a function or view can change access without changing a row.
+Answer: Adam, 2026-11-07: add it. RULES.md "Escalation" updated.
+Evidence: B3 review; DECISIONS 74.
+
+## 79 Confirmed as built
+Chunk: 7, 8, 10   Date: 2026-11-07
+Recommendation: as built.
+Answer: Adam, 2026-11-07: confirmed: the loosened revoke check (DECISIONS 69); desktop Table rows open from the keyboard (chunk 8); Supabase "Automatic branching" left off at the checklist's step 3; the checklist and its test ship in every app made from the template.
+Evidence: CONTEXT.md "Questions for the release batch".
+
+## 80 The Docker Hub secret
+Chunk: setup   Date: 2026-11-07
+Recommendation: re-save the `auth.docker.io` network secret on the Starter environment as type "basic" (username + token).
+Answer: Adam's reply left the status unfilled ("[done / still to do]"). Checked by the coordinator at 02:05: `auth.docker.io` still answers 500 "unsupported authentication scheme: Bearer" in this session, so it reads as still to do (or saved after this session's network was set). Not blocking: `mirror.gcr.io` carried every pull.
+Evidence: CONTEXT.md "Repo facts"; LEARNINGS B3.
+
 ## Decided by the coordinator (technical, under Adam's rule of 2026-11-06)
 *Technical and architecture questions raised during the build, decided by the coordinator by the guiding rule and the lift rule, each with its one-line reason. Same format; "Answer" names who decided. TASKS.md "Decided" 1–49 are the planning session's; these continue from 50.*
 
