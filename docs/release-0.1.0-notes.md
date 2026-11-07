@@ -43,7 +43,7 @@ What this build found, one line each:
 - **54** The embeds check's local PostgREST runs its anon role as `postgres`, because anon is revoked on own and signed-in tables (a probe as anon would fail every valid embed).
 - **59** verify-rls counts rows with a GET and `limit(0)`, never HEAD: a refused HEAD reaches supabase-js with no error code, so a correct refusal would read as a failure.
 - **61** The app's replay seed for verify-rls is an optional `supabase/verify-rls-seed.sql`; without it a non-empty access list fails loudly.
-- **62** The script tests run in CI (`npm run check`), because the list test is the only thing that catches a table the code reads but the access list lacks.
+- **62** The script tests run in CI (`npm run check`), because the list test is the only thing that catches a table the code reads but the access list lacks. Since chunk 12 the app tests run there too (`npm test`, DECISIONS 84).
 - **63** verify-rls fails an own or signed-in table that `anon` holds any privilege on (default privileges included), since every probe passes behind RLS while only the catalog sees it.
 - **69** `migration-rules.mjs` now passes a `revoke` on a table the same batch creates. This loosens a data-safety check (every app's every table has such a revoke); any other revoke is still flagged.
 

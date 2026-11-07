@@ -196,7 +196,7 @@ Folded from Overload's later rules, in groups (the standing rules above come fir
 
 ## Usage
 - Commands finish in under 5 minutes, so the cache doesn't expire mid-wait; split long runs. (Overload RULES.md L647)
-- Affected test files only while building, until one full suite before release; every script in `scripts/` still runs at every chunk boundary. Break proofs run against the specific test file, never the full suite. (Overload RULES.md L638, L646)
+- Affected test files only while building, until one full suite before release; every script in `scripts/` still runs at every chunk boundary, and CI runs the script tests and the full app suite on every PR (`npm run check`, `npm test`: DECISIONS 62, 84). Break proofs run against the specific test file, never the full suite. (Overload RULES.md L638, L646)
 - `vitest run --changed origin/<Base branch>` is the census of the affected files: it follows the import graph, where grepping a hook's callers misses some. (Overload RULES.md L347)
 - Narrow reads: grep, line ranges, touched files only. (Overload RULES.md L645)
 - Batch tool calls: independent reads, edits and checks go into as few turns as possible; the turn count is the biggest cost driver. DATA reviews stay at full strength. (Overload RULES.md L645, L655)

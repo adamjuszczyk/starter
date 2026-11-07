@@ -4,6 +4,8 @@
 ## Planned, not built
 
 ### Left over from 0.1 (2026-11-07)
+- Sign-out with an expired token on a network that looks connected but isn't (Wi-Fi up, internet gone; or a server answering 5xx to the refresh) still waits ≈ 25 s while supabase-js retries its refresh before the device sign-out runs; a time limit on the server attempt would cover it (chunk 11, card 3, option c; Adam chose the `navigator.onLine` skip, DECISIONS 83).
+- CI's `npm test` log carries React Router future-flag warnings from `App.test.tsx` and `AppShell.test.tsx` (harmless); passing the router's `future` flags in those tests would silence them.
 - `check-migration` counts `create table if not exists` as created even when the table exists, so grants, policies, indexes and revokes on it pass (LEARNINGS B13; Overload's, not this build's).
 - L239's exception (DECISIONS 74) could add "and verify-rls on the replay passes": a replaced function or view can change access without changing a row. Adam to confirm.
 - The tokens check misses CSS shorthands with a named colour or typed size; the no-database check misses the client under an alias (`const db = supabase`). Both written in the checks' headers.

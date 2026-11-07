@@ -2,6 +2,12 @@
 
 The record of finished work and what CONTEXT.md no longer needs to say (BUILD.md 2.2: finished work and build logs live here; CONTEXT.md holds only the current state, and pruning it is a move into this file). Newest entry first. Read it only to trace why something is the way it is.
 
+## 2026-11-07 — chunk 12 (any failed sign-out, offline skip, the app tests in CI)
+
+The same builder as chunk 11, 10:50–11:04 (14 min): `signOut()` signs out on the device on any failure of the server's sign-out and at once when the browser reports itself offline; `npm test -- --reporter=dot` added to `migration-replay.yml` with its tripwire; 314 app tests. Real Chromium: offline and 502 both reach the sign-in page in 0.1 s (the expired-token wait gone when offline). Reviewed alone, merged as PR #15. RULES.md "Usage" and the release notes say CI runs the app tests.
+
+**No longer true, moved here from CONTEXT.md.** "**Chunk 12 building: every failed sign-out signs out on the device, offline skips the server, the app tests in CI (2026-11-07 10:55 UTC); the tag waits on it.** Chunks 0–11 and the release step are merged into `main` (PRs #1–#14, squash). Adam's answers of 10:50 (DECISIONS 82–84): any failure of the…"
+
 ## 2026-11-07 — Adam's answers to chunk 11's questions
 
 At about 10:50 (DECISIONS 82–84): any failure of the server's sign-out signs out on this device; offline skips the server; the app tests run in CI. Chunk 12 builds all three; SPEC "Screens" and the release notes amended; NEXT.md's CI leftover removed.
